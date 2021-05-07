@@ -11,11 +11,15 @@ class App {
     EvDeviceInfo deviceInfo{};
     EvDevice device{deviceInfo, window};
     EvSwapchain swapchain{device};
-    EvRastPipelineInfo pipelineInfo;
-    std::unique_ptr<EvRastPipeline> rastPipeline;
+    VkPipelineLayout vkPipelineLayout;
+    EvRastPipelineInfo pipelineInfo{};
+    std::unique_ptr<EvRastPipeline> rastPipeline{};
 
+    void createPipelineLayout();
     void createPipeline();
 
 public:
+    App();
+    ~App();
     void Run();
 };

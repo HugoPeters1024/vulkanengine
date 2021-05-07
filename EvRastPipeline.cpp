@@ -9,7 +9,6 @@ EvRastPipeline::EvRastPipeline(const EvDevice &device,
                                const char *vertFile,
                                const char *fragFile)
                                : device(device) {
-    createPipelineLayout(info);
     createGraphicsPipeline(info, vertFile, fragFile);
 }
 
@@ -20,21 +19,6 @@ EvRastPipeline::~EvRastPipeline() {
 
     printf("Destroying the pipeline\n");
     vkDestroyPipeline(device.vkDevice, vkPipeline, nullptr);
-
-    printf("Destroying the pipeline layout\n");
-    vkDestroyPipelineLayout(device.vkDevice, vkPipelineLayout, nullptr);
-}
-
-void EvRastPipeline::createPipelineLayout(const EvRastPipelineInfo &info) {
-    VkPipelineLayoutCreateInfo createInfo {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 0,
-        .pSetLayouts = nullptr,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges = nullptr,
-    };
-
-    vkCheck(vkCreatePipelineLayout(device.vkDevice, &createInfo, nullptr, &vkPipelineLayout));
 }
 
 
@@ -102,7 +86,7 @@ void EvRastPipeline::createGraphicsPipeline(EvRastPipelineInfo info, const char 
         .pDepthStencilState = &info.depthStencilStateCreateInfo,
         .pColorBlendState = &blendStateCreateInfo,
         .pDynamicState = nullptr,
-        .layout = vkPipelineLayout,
+        .layout = info.layout,
         .renderPass = info.renderPass,
         .subpass = info.subpass,
     };

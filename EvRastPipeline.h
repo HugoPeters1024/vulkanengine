@@ -14,20 +14,17 @@ struct EvRastPipelineInfo {
     VkPipelineColorBlendAttachmentState blendAttachmentState;
     VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo;
     VkRenderPass renderPass = nullptr;
+    VkPipelineLayout layout = nullptr;
     uint subpass = 0;
 };
 
 class EvRastPipeline : NoCopy {
 private:
     const EvDevice& device;
-    VkPipelineLayout vkPipelineLayout;
     VkPipeline vkPipeline;
     VkShaderModule vkVertShaderModule;
     VkShaderModule vkFragShaderModule;
 
-
-
-    void createPipelineLayout(const EvRastPipelineInfo &info);
     void createGraphicsPipeline(EvRastPipelineInfo info, const char *vertFile, const char *fragFile);
     VkShaderModule createShaderModule(const std::vector<char>& code) const;
 

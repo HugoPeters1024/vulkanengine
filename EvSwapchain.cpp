@@ -4,10 +4,16 @@
 
 EvSwapchain::EvSwapchain(const EvDevice &device) : device(device) {
     createSwapchain();
+    createImageViews();
     createRenderpass();
 }
 
 EvSwapchain::~EvSwapchain() {
+    printf("Destroying image views\n");
+    for(const auto& imageView : vkImageViews) {
+        vkDestroyImageView(device.vkDevice, imageView, nullptr);
+    }
+
     printf("Destroying swapchain's renderpass\n");
     vkDestroyRenderPass(device.vkDevice, vkRenderPass, nullptr);
     printf("Destroying swapchain\n");
@@ -58,6 +64,27 @@ void EvSwapchain::createSwapchain() {
     vkGetSwapchainImagesKHR(device.vkDevice, vkSwapchain, &imageCount, nullptr);
     vkImages.resize(imageCount);
     vkGetSwapchainImagesKHR(device.vkDevice, vkSwapchain, &imageCount, vkImages.data());
+}
+
+void EvSwapchain::createImageViews() {
+    vkImageViews.resize((vkImages.size()));
+    for(uint i=0; i<vkImageViews.size(); i++) {
+        VkImageViewCreateInfo createInfo {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = vkImages[i],
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = surfaceFormat.format,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            }
+        };
+
+        vkCheck(vkCreateImageView(device.vkDevice, &createInfo, nullptr, &vkImageViews[i]));
+    }
 }
 
 void EvSwapchain::createRenderpass() {
@@ -162,5 +189,6 @@ VkExtent2D EvSwapchain::chooseSwapExtent() const {
         .height = std::clamp(static_cast<uint>(height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height),
     };
 }
+
 
 

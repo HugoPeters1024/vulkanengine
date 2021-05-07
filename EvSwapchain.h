@@ -7,6 +7,7 @@ private:
     const EvDevice& device;
 
     void createSwapchain();
+    void createImageViews();
     void createRenderpass();
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat() const;
@@ -15,6 +16,7 @@ private:
 public:
     VkSwapchainKHR vkSwapchain;
     std::vector<VkImage> vkImages;
+    std::vector<VkImageView> vkImageViews;
     VkSurfaceFormatKHR surfaceFormat;
     VkExtent2D extent;
     VkRenderPass vkRenderPass;
