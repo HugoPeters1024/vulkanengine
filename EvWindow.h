@@ -4,17 +4,16 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <vulkan/vulkan.h>
 
 #include "utils.h"
 
 class EvWindow : NoCopy {
 public:
     int width, height;
-    const char* name;
+    std::string name;
     GLFWwindow* glfwWindow;
 
-    EvWindow(int w, int h, const char* name);
+    EvWindow(int w, int h, std::string name);
     ~EvWindow();
 
     void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface) const;
@@ -22,5 +21,5 @@ public:
     void getFramebufferSize(int* width, int* height) const;
 
     bool shouldClose() const;
-    bool processEvents() const;
+    void processEvents() const;
 };

@@ -2,17 +2,30 @@
 
 #include <stdexcept>
 #include <cassert>
+#include <utility>
 #include "UtilsPhysicalDevice.h"
 
-EvDevice::EvDevice(EvDeviceInfo info, EvWindow &window) : window(window), info(info) {
+EvDevice::EvDevice(EvDeviceInfo info, EvWindow &window) : window(window), info(std::move(info)) {
     finalizeInfo();
     createInstance();
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
+    createCommandPool();
 }
 
 EvDevice::~EvDevice() {
+    printf("Destoyring image views\n");
+    for(const auto& imageView : createdImageViews)
+        vkDestroyImageView(vkDevice, imageView, nullptr);
+    printf("Destroying images\n");
+    for(const auto& image : createdImages)
+        vkDestroyImage(vkDevice, image, nullptr);
+    printf("Freeing device memory\n");
+    for(const auto& memory : createdImagesMemory)
+        vkFreeMemory(vkDevice, memory, nullptr);
+    printf("Destroying commandPool\n");
+    vkDestroyCommandPool(vkDevice, vkCommandPool, nullptr);
     printf("Destroying logical device\n");
     vkDestroyDevice(vkDevice, nullptr);
     printf("Destroying surface\n");
@@ -37,9 +50,9 @@ void EvDevice::createInstance() {
 
     VkApplicationInfo appInfo {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pApplicationName = window.name,
+        .pApplicationName = window.name.c_str(),
         .applicationVersion = VK_MAKE_VERSION(1,0,0),
-        .pEngineName = "EngineName",
+        .pEngineName = "Engine Name",
         .engineVersion = VK_MAKE_VERSION(1,0,0),
         .apiVersion = VK_API_VERSION_1_2,
     };
@@ -77,6 +90,7 @@ void EvDevice::pickPhysicalDevice() {
     swapchainSupportDetails = querySwapchainSupport(vkPhysicalDevice, vkSurface);
     vkGetPhysicalDeviceProperties(vkPhysicalDevice, &vkPhysicalDeviceProperties);
     vkGetPhysicalDeviceFeatures(vkPhysicalDevice, &vkPhysicalDeviceFeatures);
+    vkGetPhysicalDeviceMemoryProperties(vkPhysicalDevice, &vkPhysicalDeviceMemoryProperties);
 
     printf("Selected GPU: %s\n", vkPhysicalDeviceProperties.deviceName);
 
@@ -127,6 +141,17 @@ void EvDevice::createLogicalDevice() {
     vkGetDeviceQueue(vkDevice, queueFamilyIndices.compute.value(), 0, &computeQueue);
     vkGetDeviceQueue(vkDevice, queueFamilyIndices.graphics.value(), 0, &graphicsQueue);
     vkGetDeviceQueue(vkDevice, queueFamilyIndices.present.value(), 0, &presentQueue);
+
+}
+
+void EvDevice::createCommandPool() {
+    VkCommandPoolCreateInfo createInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = 0,
+        .queueFamilyIndex = queueFamilyIndices.graphics.value(),
+    };
+
+    vkCheck(vkCreateCommandPool(vkDevice, &createInfo, nullptr, &vkCommandPool));
 }
 
 bool EvDevice::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
@@ -148,6 +173,80 @@ bool EvDevice::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
     vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 
     return deviceFeatures.samplerAnisotropy;
+}
+
+VkImage EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                              VkMemoryPropertyFlags properties) {
+    VkImage image;
+    VkDeviceMemory memory;
+
+    VkImageCreateInfo imageInfo {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = format,
+        .extent = {
+            .width = width,
+            .height = height,
+            .depth = 1,
+        },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = tiling,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+
+    vkCheck(vkCreateImage(vkDevice, &imageInfo, nullptr, &image));
+
+    VkMemoryRequirements memoryRequirements;
+    vkGetImageMemoryRequirements(vkDevice, image, &memoryRequirements);
+
+    VkMemoryAllocateInfo allocInfo {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = memoryRequirements.size,
+        .memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, properties),
+    };
+
+    vkCheck(vkAllocateMemory(vkDevice, &allocInfo, nullptr, &memory));
+    vkCheck(vkBindImageMemory(vkDevice, image, memory, 0));
+
+    createdImages.push_back(image);
+    createdImagesMemory.push_back(memory);
+    return image;
+}
+
+VkImageView EvDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+    VkImageView imageView;
+
+    VkImageViewCreateInfo viewInfo {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = format,
+        .subresourceRange = {
+            .aspectMask = aspectFlags,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
+
+    vkCheck(vkCreateImageView(vkDevice, &viewInfo, nullptr, &imageView));
+    createdImageViews.push_back(imageView);
+    return imageView;
+}
+
+uint32_t EvDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
+    for(uint32_t i=0; i<vkPhysicalDeviceMemoryProperties.memoryTypeCount; i++) {
+        if ((typeFilter & (1 << i))  && (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("Could not find suitable memory type");
 }
 
 

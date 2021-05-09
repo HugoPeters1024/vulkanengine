@@ -1,4 +1,5 @@
 #include <memory>
+#include <vulkan/vulkan.h>
 #include "EvWindow.h"
 #include "EvDevice.h"
 #include "EvSwapchain.h"
@@ -14,9 +15,12 @@ class App {
     VkPipelineLayout vkPipelineLayout;
     EvRastPipelineInfo pipelineInfo{};
     std::unique_ptr<EvRastPipeline> rastPipeline{};
+    std::vector<VkCommandBuffer> commandBuffers{};
 
     void createPipelineLayout();
     void createPipeline();
+    void createCommandBuffers();
+    void drawFrame();
 
 public:
     App();

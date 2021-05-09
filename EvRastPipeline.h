@@ -31,6 +31,8 @@ private:
 public:
     EvRastPipeline(const EvDevice& device, const EvRastPipelineInfo &info, const char *vertFile, const char *fragFile);
     ~EvRastPipeline();
+
+    void bind(VkCommandBuffer commandBuffer) const;
 };
 
 inline EvRastPipelineInfo defaultRastPipelineInfo(uint width, uint height) {
@@ -60,7 +62,7 @@ inline EvRastPipelineInfo defaultRastPipelineInfo(uint width, uint height) {
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = VK_POLYGON_MODE_FILL,
         .cullMode = VK_CULL_MODE_NONE,
-        .frontFace = VK_FRONT_FACE_CLOCKWISE,
+        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable = VK_FALSE,
         .lineWidth = 1.0f,
     };
@@ -82,7 +84,8 @@ inline EvRastPipelineInfo defaultRastPipelineInfo(uint width, uint height) {
         .colorBlendOp = VK_BLEND_OP_ADD,
         .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
         .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-        .alphaBlendOp = VK_BLEND_OP_ADD
+        .alphaBlendOp = VK_BLEND_OP_ADD,
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
     };
 
 

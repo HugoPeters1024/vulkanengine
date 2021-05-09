@@ -16,18 +16,30 @@ struct EvDeviceInfo {
 class EvDevice : NoCopy {
 private:
     bool isDeviceSuitable(VkPhysicalDevice physicalDevice) const;
+    std::vector<VkImage> createdImages;
+    std::vector<VkDeviceMemory> createdImagesMemory;
+    std::vector<VkImageView> createdImageViews;
+
+    void finalizeInfo();
+    void createInstance();
+    void createSurface();
+    void pickPhysicalDevice();
+    void createLogicalDevice();
+    void createCommandPool();
 
 public:
     EvDeviceInfo info;
     EvWindow& window;
     VkInstance vkInstance;
+    VkSurfaceKHR vkSurface;
     VkPhysicalDevice vkPhysicalDevice;
     VkPhysicalDeviceProperties vkPhysicalDeviceProperties;
     VkPhysicalDeviceFeatures vkPhysicalDeviceFeatures;
+    VkPhysicalDeviceMemoryProperties vkPhysicalDeviceMemoryProperties;
     QueueFamilyIndices queueFamilyIndices;
     SwapchainSupportDetails swapchainSupportDetails;
     VkDevice vkDevice;
-    VkSurfaceKHR vkSurface;
+    VkCommandPool vkCommandPool;
 
     VkQueue computeQueue;
     VkQueue graphicsQueue;
@@ -36,9 +48,7 @@ public:
     EvDevice(EvDeviceInfo info, EvWindow &window);
     ~EvDevice();
 
-    void finalizeInfo();
-    void createInstance();
-    void createSurface();
-    void pickPhysicalDevice();
-    void createLogicalDevice();
+    VkImage createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
+    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 };

@@ -29,7 +29,7 @@ void EvRastPipeline::createGraphicsPipeline(EvRastPipelineInfo info, const char 
     auto fragCode = readFile(fragFile);
 
     printf("vertex shader:   %lu bytes\n", vertCode.size());
-    printf("fragment shader: %lu bytes\n", vertCode.size());
+    printf("fragment shader: %lu bytes\n", fragCode.size());
 
     vkVertShaderModule = createShaderModule(vertCode);
     vkFragShaderModule = createShaderModule(fragCode);
@@ -69,7 +69,7 @@ void EvRastPipeline::createGraphicsPipeline(EvRastPipelineInfo info, const char 
     VkPipelineColorBlendStateCreateInfo blendStateCreateInfo {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
             .logicOpEnable = VK_FALSE,
-            .logicOp = VK_LOGIC_OP_NO_OP,
+            .logicOp = VK_LOGIC_OP_COPY,
             .attachmentCount = 1,
             .pAttachments = &info.blendAttachmentState,
     };
@@ -97,13 +97,17 @@ void EvRastPipeline::createGraphicsPipeline(EvRastPipelineInfo info, const char 
 
 VkShaderModule EvRastPipeline::createShaderModule(const std::vector<char>& code) const {
     VkShaderModuleCreateInfo createInfo {
-            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .codeSize = code.size(),
-            .pCode = reinterpret_cast<const uint32_t*>(code.data()),
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = code.size(),
+        .pCode = reinterpret_cast<const uint32_t*>(code.data()),
     };
 
     VkShaderModule shaderModule;
     vkCheck(vkCreateShaderModule(device.vkDevice, &createInfo, nullptr, &shaderModule));
     return shaderModule;
+}
+
+void EvRastPipeline::bind(VkCommandBuffer commandBuffer) const {
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
 }
 

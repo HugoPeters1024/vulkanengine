@@ -1,11 +1,13 @@
 #include <cstdio>
 #include "EvWindow.h"
 
-EvWindow::EvWindow(int w, int h, const char *name) {
-    glfwInit();
+EvWindow::EvWindow(int w, int h, std::string name) : width(w), height(h), name(name) {
+    if (!glfwInit()) {
+        throw std::runtime_error("Could not initialize GLFW");
+    }
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    glfwWindow = glfwCreateWindow(w, h, name, nullptr, nullptr);
+    glfwWindow = glfwCreateWindow(w, h, name.c_str(), nullptr, nullptr);
 }
 
 EvWindow::~EvWindow() {
@@ -30,7 +32,7 @@ bool EvWindow::shouldClose() const {
     return glfwWindowShouldClose(glfwWindow);
 }
 
-bool EvWindow::processEvents() const {
+void EvWindow::processEvents() const {
     glfwPollEvents();
 }
 
