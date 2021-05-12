@@ -43,7 +43,7 @@ void App::createPipeline() {
     pipelineInfo.layout = vkPipelineLayout;
 
     rastPipeline = std::make_unique<EvRastPipeline>(
-            device, pipelineInfo, "shaders/shader.vert.spv", "shaders/shader.frag.spv");
+            device, pipelineInfo, "shaders_bin/shader.vert.spv", "shaders_bin/shader.frag.spv");
 }
 
 void App::createCommandBuffers() {

@@ -6,15 +6,16 @@ set(CMAKE_CXX_STANDARD 20)
 file(GLOB src CONFIGURE_DEPENDS "*.h" "*.hpp" "*.cpp")
 
 macro(shader)
-add_custom_command(
-        OUTPUT shaders/${ARGV0}.spv
-        DEPENDS shaders/${ARGV0}
-        COMMAND /usr/bin/glslc
-        ARGS ${CMAKE_SOURCE_DIR}/shaders/${ARGV0} -o ${CMAKE_SOURCE_DIR}/shaders/${ARGV0}.spv
-        COMMENT building shaders
-        VERBATIM)
-SET(src ${src} shaders/${ARGV0}.spv)
+    add_custom_command(
+            OUTPUT shaders_bin/${ARGV0}.spv
+            DEPENDS shaders/${ARGV0}
+            COMMAND /usr/bin/glslc
+            ARGS ${CMAKE_SOURCE_DIR}/shaders/${ARGV0} -o ${CMAKE_SOURCE_DIR}/shaders_bin/${ARGV0}.spv
+            COMMENT building shaders
+            VERBATIM)
+    SET(src ${src} shaders_bin/${ARGV0}.spv)
 endmacro()
+
 
 shader("shader.vert")
 shader("shader.frag")
