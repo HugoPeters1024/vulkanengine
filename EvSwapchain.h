@@ -7,7 +7,6 @@ private:
     EvDevice& device;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     uint currentFrame = 0;
-    bool resized = true;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
@@ -38,5 +37,6 @@ public:
     EvSwapchain(EvDevice& device);
     ~EvSwapchain();
 
-    void presentCommandBuffer(const std::vector<VkCommandBuffer>& commandBuffers);
+    VkResult acquireNextSwapchainImage(uint32_t* imageIndex);
+    VkResult presentCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 };

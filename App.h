@@ -11,17 +11,19 @@ class App {
     EvWindow window{640, 480, "My app"};
     EvDeviceInfo deviceInfo{};
     EvDevice device{deviceInfo, window};
-    EvSwapchain swapchain{device};
+    std::unique_ptr<EvSwapchain> swapchain;
     VkPipelineLayout vkPipelineLayout;
     EvRastPipelineInfo pipelineInfo{};
     std::unique_ptr<EvRastPipeline> rastPipeline{};
     std::vector<VkCommandBuffer> commandBuffers{};
 
+    void createSwapchain();
     void createPipelineLayout();
     void createPipeline();
     void allocateCommandBuffers();
     void recordCommandBuffers();
     void drawFrame();
+    void recreateSwapchain();
 
 public:
     App();

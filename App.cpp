@@ -2,7 +2,11 @@
 #include "utils.h"
 
 App::App() {
-
+    createSwapchain();
+    createPipelineLayout();
+    createPipeline();
+    allocateCommandBuffers();
+    recordCommandBuffers();
 }
 
 App::~App() {
@@ -11,10 +15,6 @@ App::~App() {
 }
 
 void App::Run() {
-    createPipelineLayout();
-    createPipeline();
-    allocateCommandBuffers();
-    recordCommandBuffers();
 
     while (!window.shouldClose()) {
         window.processEvents();
@@ -24,6 +24,11 @@ void App::Run() {
     printf("Flushing GPU before shutdown...\n");
     vkDeviceWaitIdle(device.vkDevice);
     printf("Goodbye!\n");
+}
+
+void App::createSwapchain() {
+    swapchain.reset();
+    swapchain = std::make_unique<EvSwapchain>(device);
 }
 
 void App::createPipelineLayout() {
@@ -39,8 +44,8 @@ void App::createPipelineLayout() {
 }
 
 void App::createPipeline() {
-    pipelineInfo = defaultRastPipelineInfo(swapchain.extent.width, swapchain.extent.height);
-    pipelineInfo.renderPass = swapchain.vkRenderPass;
+    pipelineInfo = defaultRastPipelineInfo(swapchain->extent.width, swapchain->extent.height);
+    pipelineInfo.renderPass = swapchain->vkRenderPass;
     pipelineInfo.layout = vkPipelineLayout;
 
     rastPipeline = std::make_unique<EvRastPipeline>(
@@ -48,7 +53,7 @@ void App::createPipeline() {
 }
 
 void App::allocateCommandBuffers() {
-    commandBuffers.resize(swapchain.vkImages.size());
+    commandBuffers.resize(swapchain->vkImages.size());
 
     VkCommandBufferAllocateInfo createInfo {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -80,11 +85,11 @@ void App::recordCommandBuffers() {
 
         VkRenderPassBeginInfo renderPassInfo {
                 .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                .renderPass = swapchain.vkRenderPass,
-                .framebuffer = swapchain.vkFramebuffers[i],
+                .renderPass = swapchain->vkRenderPass,
+                .framebuffer = swapchain->vkFramebuffers[i],
                 .renderArea = {
                         .offset = {0,0},
-                        .extent = swapchain.extent,
+                        .extent = swapchain->extent,
                 },
                 .clearValueCount = static_cast<uint32_t>(clearValues.size()),
                 .pClearValues = clearValues.data(),
@@ -99,8 +104,36 @@ void App::recordCommandBuffers() {
 }
 
 void App::drawFrame() {
-    swapchain.presentCommandBuffer(commandBuffers);
+    uint32_t imageIndex;
+    VkResult acquireImageResult = swapchain->acquireNextSwapchainImage(&imageIndex);
+
+    if (acquireImageResult == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreateSwapchain();
+        return;
+    } else if (acquireImageResult != VK_SUCCESS && acquireImageResult != VK_SUBOPTIMAL_KHR) {
+        throw std::runtime_error("Failed to acquire swapchain image");
+    }
+
+    printf("drawing image %i\n", imageIndex);
+    VkResult presentResult = swapchain->presentCommandBuffer(commandBuffers[imageIndex], imageIndex);
+
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || window.wasResized) {
+        window.wasResized = false;
+        recreateSwapchain();
+        return;
+    } else if (presentResult != VK_SUCCESS) {
+        throw std::runtime_error("Failed to present swapchain image");
+    }
 }
+
+void App::recreateSwapchain() {
+    vkCheck(vkDeviceWaitIdle(device.vkDevice));
+    window.processEvents();
+    createSwapchain();
+    createPipeline();
+    recordCommandBuffers();
+}
+
 
 
 

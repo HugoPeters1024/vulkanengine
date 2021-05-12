@@ -33,7 +33,6 @@ public:
     VkPhysicalDeviceFeatures vkPhysicalDeviceFeatures;
     VkPhysicalDeviceMemoryProperties vkPhysicalDeviceMemoryProperties;
     QueueFamilyIndices queueFamilyIndices;
-    SwapchainSupportDetails swapchainSupportDetails;
     VkDevice vkDevice;
     VkCommandPool vkCommandPool;
 
@@ -47,4 +46,5 @@ public:
     void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage* image, VkDeviceMemory* memory);
     void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView);
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+    SwapchainSupportDetails getSwapchainSupportDetails() const;
 };

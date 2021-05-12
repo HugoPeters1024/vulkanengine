@@ -78,7 +78,6 @@ void EvDevice::pickPhysicalDevice() {
 
     vkPhysicalDevice = devices[0];
     queueFamilyIndices = findQueueFamilies(vkPhysicalDevice, vkSurface);
-    swapchainSupportDetails = querySwapchainSupport(vkPhysicalDevice, vkSurface);
     vkGetPhysicalDeviceProperties(vkPhysicalDevice, &vkPhysicalDeviceProperties);
     vkGetPhysicalDeviceFeatures(vkPhysicalDevice, &vkPhysicalDeviceFeatures);
     vkGetPhysicalDeviceMemoryProperties(vkPhysicalDevice, &vkPhysicalDeviceMemoryProperties);
@@ -229,6 +228,10 @@ uint32_t EvDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pro
     }
 
     throw std::runtime_error("Could not find suitable memory type");
+}
+
+SwapchainSupportDetails EvDevice::getSwapchainSupportDetails() const {
+    return querySwapchainSupport(vkPhysicalDevice, vkSurface);
 }
 
 

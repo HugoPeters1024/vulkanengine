@@ -13,6 +13,16 @@ EvSwapchain::EvSwapchain(EvDevice &device) : device(device) {
 }
 
 EvSwapchain::~EvSwapchain() {
+    printf("Destroying semaphores\n");
+    for(const auto& sem : imageAvailableSemaphores)
+        vkDestroySemaphore(device.vkDevice, sem, nullptr);
+    for(const auto& sem : renderFinishedSemaphores)
+        vkDestroySemaphore(device.vkDevice, sem, nullptr);
+
+    printf("Destroying fences\n");
+    for(const auto& fence : inFlightFences)
+        vkDestroyFence(device.vkDevice, fence, nullptr);
+
     printf("Destroying image views\n");
     for(const auto& view : vkImageViews)
         vkDestroyImageView(device.vkDevice, view, nullptr);
@@ -24,21 +34,6 @@ EvSwapchain::~EvSwapchain() {
 
     printf("Freeing memory\n");
     vkFreeMemory(device.vkDevice, vkDepthImageMemory, nullptr);
-
-
-    printf("Destroying fences\n");
-
-    for(const auto& fence : inFlightFences)
-        vkDestroyFence(device.vkDevice, fence, nullptr);
-
-    printf("Destroying semaphores\n");
-
-    for(const auto& sem : imageAvailableSemaphores)
-        vkDestroySemaphore(device.vkDevice, sem, nullptr);
-
-    for(const auto& sem : renderFinishedSemaphores)
-        vkDestroySemaphore(device.vkDevice, sem, nullptr);
-
 
     printf("Destroying frame buffers\n");
     for(const auto& framebuffer : vkFramebuffers){
@@ -52,7 +47,7 @@ EvSwapchain::~EvSwapchain() {
 }
 
 void EvSwapchain::createSwapchain() {
-    const auto& capabilities = device.swapchainSupportDetails.capabilities;
+    const auto& capabilities = device.getSwapchainSupportDetails().capabilities;
     surfaceFormat = chooseSwapSurfaceFormat();
     VkPresentModeKHR presentMode = chooseSwapPresentMode();
     extent = chooseSwapExtent();
@@ -200,7 +195,7 @@ void EvSwapchain::createSyncObjects() {
     imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-    imagesInFlight.resize(MAX_FRAMES_IN_FLIGHT, VK_NULL_HANDLE);
+    imagesInFlight.resize(vkImages.size(), VK_NULL_HANDLE);
 
     VkSemaphoreCreateInfo semInfo {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -220,7 +215,7 @@ void EvSwapchain::createSyncObjects() {
 
 VkSurfaceFormatKHR EvSwapchain::chooseSwapSurfaceFormat() const {
     // Prefer SRGB
-    const auto& availableFormats = device.swapchainSupportDetails.formats;
+    const auto& availableFormats = device.getSwapchainSupportDetails().formats;
     for(const auto& availableFormat : availableFormats) {
         if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             return availableFormat;
@@ -231,7 +226,7 @@ VkSurfaceFormatKHR EvSwapchain::chooseSwapSurfaceFormat() const {
 }
 
 VkPresentModeKHR EvSwapchain::chooseSwapPresentMode() const {
-    const auto& availablePresentModes = device.swapchainSupportDetails.presentModes;
+    const auto& availablePresentModes = device.getSwapchainSupportDetails().presentModes;
     for(const auto& presentMode : availablePresentModes) {
         if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
             return presentMode;
@@ -243,7 +238,7 @@ VkPresentModeKHR EvSwapchain::chooseSwapPresentMode() const {
 }
 
 VkExtent2D EvSwapchain::chooseSwapExtent() const {
-    const auto& capabilities = device.swapchainSupportDetails.capabilities;
+    const auto& capabilities = device.getSwapchainSupportDetails().capabilities;
 
     if (capabilities.currentExtent.width != 0xffffffff) {
         return capabilities.currentExtent;
@@ -258,19 +253,12 @@ VkExtent2D EvSwapchain::chooseSwapExtent() const {
     };
 }
 
-void EvSwapchain::presentCommandBuffer(const std::vector<VkCommandBuffer> &commandBuffers) {
-    assert(commandBuffers.size() == vkImages.size());
+VkResult EvSwapchain::acquireNextSwapchainImage(uint32_t *imageIndex) {
     vkWaitForFences(device.vkDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    return vkAcquireNextImageKHR(device.vkDevice, vkSwapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, imageIndex);
+}
 
-    uint imageIndex;
-    VkResult result = vkAcquireNextImageKHR(device.vkDevice, vkSwapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        throw std::runtime_error("Window was resized!");
-    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-        throw std::runtime_error("Failed to acquire swapchain image");
-    }
-
+VkResult EvSwapchain::presentCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
     if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device.vkDevice, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
@@ -279,42 +267,35 @@ void EvSwapchain::presentCommandBuffer(const std::vector<VkCommandBuffer> &comma
 
     std::array<VkSemaphore,1> waitSemaphores = { imageAvailableSemaphores[currentFrame] };
     std::array<VkPipelineStageFlags,1> waitStages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    std::array<VkCommandBuffer,1> pCommandBuffers = {commandBuffers[imageIndex]};
+    std::array<VkCommandBuffer,1> pCommandBuffers = {commandBuffer};
     std::array<VkSemaphore,1> signalSemaphores = { renderFinishedSemaphores[currentFrame]};
 
     VkSubmitInfo submitInfo {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
-        .pWaitSemaphores = waitSemaphores.data(),
-        .pWaitDstStageMask = waitStages.data(),
-        .commandBufferCount = static_cast<uint32_t>(pCommandBuffers.size()),
-        .pCommandBuffers = pCommandBuffers.data(),
-        .signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size()),
-        .pSignalSemaphores = signalSemaphores.data(),
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
+            .pWaitSemaphores = waitSemaphores.data(),
+            .pWaitDstStageMask = waitStages.data(),
+            .commandBufferCount = static_cast<uint32_t>(pCommandBuffers.size()),
+            .pCommandBuffers = pCommandBuffers.data(),
+            .signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size()),
+            .pSignalSemaphores = signalSemaphores.data(),
     };
 
     vkResetFences(device.vkDevice, 1, &inFlightFences[currentFrame]);
     vkCheck(vkQueueSubmit(device.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]));
 
     VkPresentInfoKHR presentInfo {
-        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .waitSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size()),
-        .pWaitSemaphores = signalSemaphores.data(),
-        .swapchainCount = 1,
-        .pSwapchains = &vkSwapchain,
-        .pImageIndices = &imageIndex,
-        .pResults = nullptr,
+            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .waitSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size()),
+            .pWaitSemaphores = signalSemaphores.data(),
+            .swapchainCount = 1,
+            .pSwapchains = &vkSwapchain,
+            .pImageIndices = &imageIndex,
+            .pResults = nullptr,
     };
 
-    result = vkQueuePresentKHR(device.presentQueue, &presentInfo);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || resized) {
-        resized = false;
-        // recreate swapchain
-    } else if (result != VK_SUCCESS) {
-        throw std::runtime_error("Failed to present swapchain image");
-    }
-
-    currentFrame = (currentFrame + 1) & MAX_FRAMES_IN_FLIGHT;
+    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    return vkQueuePresentKHR(device.presentQueue, &presentInfo);
 }
 
 
