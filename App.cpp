@@ -114,7 +114,6 @@ void App::drawFrame() {
         throw std::runtime_error("Failed to acquire swapchain image");
     }
 
-    printf("drawing image %i\n", imageIndex);
     VkResult presentResult = swapchain->presentCommandBuffer(commandBuffers[imageIndex], imageIndex);
 
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || window.wasResized) {
@@ -127,8 +126,8 @@ void App::drawFrame() {
 }
 
 void App::recreateSwapchain() {
+    window.waitForEvent();
     vkCheck(vkDeviceWaitIdle(device.vkDevice));
-    window.processEvents();
     createSwapchain();
     createPipeline();
     recordCommandBuffers();

@@ -25,4 +25,5 @@ public:
 
     bool shouldClose() const;
     void processEvents() const;
+    void waitForEvent() const;
 };

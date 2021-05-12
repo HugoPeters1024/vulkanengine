@@ -38,6 +38,10 @@ void EvWindow::processEvents() const {
     glfwPollEvents();
 }
 
+void EvWindow::waitForEvent() const {
+    glfwWaitEvents();
+}
+
 void EvWindow::getFramebufferSize(int *width, int *height) const {
     *width = 0;
     *height = 0;
@@ -54,5 +58,6 @@ void EvWindow::onResizeCallback(GLFWwindow* glfwWindow, int width, int height) {
     window->wasResized = true;
     printf("window was resized to (%i, %i)\n", width, height);
 }
+
 
 
