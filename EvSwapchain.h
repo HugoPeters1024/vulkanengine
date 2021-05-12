@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include "EvDevice.h"
 
 class EvSwapchain {
@@ -11,7 +12,9 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
     std::vector<VkFence> imagesInFlight;
+    std::shared_ptr<EvSwapchain> oldSwapchain;
 
+    void init();
     void createSwapchain();
     void createImageViews();
     void createDepthResources();
@@ -35,6 +38,7 @@ public:
     VkRenderPass vkRenderPass;
 
     EvSwapchain(EvDevice& device);
+    EvSwapchain(EvDevice& device, std::shared_ptr<EvSwapchain> previous);
     ~EvSwapchain();
 
     VkResult acquireNextSwapchainImage(uint32_t* imageIndex);

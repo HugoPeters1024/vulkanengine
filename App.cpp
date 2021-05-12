@@ -36,8 +36,11 @@ void App::createShaderModules() {
 }
 
 void App::createSwapchain() {
-    swapchain.reset();
-    swapchain = std::make_unique<EvSwapchain>(device);
+    if (swapchain == nullptr) {
+        swapchain = std::make_unique<EvSwapchain>(device);
+    } else {
+        swapchain = std::make_unique<EvSwapchain>(device, std::move(swapchain));
+    }
 }
 
 void App::createPipelineLayout() {
@@ -53,7 +56,7 @@ void App::createPipelineLayout() {
 }
 
 void App::createPipeline() {
-    defaultRastPipelineInfo(swapchain->extent.width, swapchain->extent.height, vertShaderModule, fragShaderModule, &pipelineInfo);
+    defaultRastPipelineInfo(vertShaderModule, fragShaderModule, &pipelineInfo);
     pipelineInfo.renderPass = swapchain->vkRenderPass;
     pipelineInfo.layout = vkPipelineLayout;
 
@@ -148,7 +151,7 @@ void App::recreateSwapchain() {
     window.waitForEvent();
     vkCheck(vkDeviceWaitIdle(device.vkDevice));
     createSwapchain();
-    createPipeline();
+  //  createPipeline();
     recordCommandBuffers();
 }
 

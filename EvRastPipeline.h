@@ -35,7 +35,7 @@ public:
     void bind(VkCommandBuffer commandBuffer) const;
 };
 
-inline void defaultRastPipelineInfo(uint width, uint height, VkShaderModule vertShaderModule, VkShaderModule fragShaderModule, EvRastPipelineInfo* info) {
+inline void defaultRastPipelineInfo(VkShaderModule vertShaderModule, VkShaderModule fragShaderModule, EvRastPipelineInfo* info) {
     VkPipelineViewportStateCreateInfo viewportInfo {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
             .viewportCount = 1,

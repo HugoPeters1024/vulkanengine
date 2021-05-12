@@ -4,6 +4,16 @@
 #include <cassert>
 
 EvSwapchain::EvSwapchain(EvDevice &device) : device(device) {
+    init();
+}
+
+EvSwapchain::EvSwapchain(EvDevice &device, std::shared_ptr<EvSwapchain> previous)
+    : device(device), oldSwapchain(previous) {
+    init();
+    oldSwapchain.reset();
+}
+
+void EvSwapchain::init() {
     createSwapchain();
     createImageViews();
     createDepthResources();
@@ -46,6 +56,7 @@ EvSwapchain::~EvSwapchain() {
     vkDestroySwapchainKHR(device.vkDevice, vkSwapchain, nullptr);
 }
 
+
 void EvSwapchain::createSwapchain() {
     const auto& capabilities = device.getSwapchainSupportDetails().capabilities;
     surfaceFormat = chooseSwapSurfaceFormat();
@@ -72,7 +83,7 @@ void EvSwapchain::createSwapchain() {
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = presentMode,
         .clipped = VK_TRUE,
-        .oldSwapchain = VK_NULL_HANDLE,
+        .oldSwapchain = oldSwapchain == nullptr ? VK_NULL_HANDLE : oldSwapchain->vkSwapchain,
     };
 
     const auto& indices = device.queueFamilyIndices;
@@ -297,6 +308,8 @@ VkResult EvSwapchain::presentCommandBuffer(VkCommandBuffer commandBuffer, uint32
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     return vkQueuePresentKHR(device.presentQueue, &presentInfo);
 }
+
+
 
 
 
