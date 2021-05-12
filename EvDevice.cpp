@@ -138,7 +138,7 @@ void EvDevice::createLogicalDevice() {
 void EvDevice::createCommandPool() {
     VkCommandPoolCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = 0,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = queueFamilyIndices.graphics.value(),
     };
 

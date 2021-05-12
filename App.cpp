@@ -13,7 +13,8 @@ App::~App() {
 void App::Run() {
     createPipelineLayout();
     createPipeline();
-    createCommandBuffers();
+    allocateCommandBuffers();
+    recordCommandBuffers();
 
     while (!window.shouldClose()) {
         window.processEvents();
@@ -46,43 +47,47 @@ void App::createPipeline() {
             device, pipelineInfo, "shaders_bin/shader.vert.spv", "shaders_bin/shader.frag.spv");
 }
 
-void App::createCommandBuffers() {
+void App::allocateCommandBuffers() {
     commandBuffers.resize(swapchain.vkImages.size());
 
     VkCommandBufferAllocateInfo createInfo {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = device.vkCommandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = static_cast<uint32_t>(commandBuffers.size()),
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = device.vkCommandPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = static_cast<uint32_t>(commandBuffers.size()),
     };
 
     vkCheck(vkAllocateCommandBuffers(device.vkDevice, &createInfo, commandBuffers.data()));
+}
 
+void App::recordCommandBuffers() {
     for(uint i=0; i<commandBuffers.size(); i++) {
+        vkCheck(vkResetCommandBuffer(commandBuffers[i], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
         VkCommandBufferBeginInfo beginInfo{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         };
 
         vkCheck(vkBeginCommandBuffer(commandBuffers[i], &beginInfo));
 
         std::array<VkClearValue, 2> clearValues {};
         clearValues[0] = {
-            .color = {0.0f, 0.1f, 0.1f, 1.0f},
+                .color = {0.0f, 0.1f, 0.1f, 1.0f},
         };
         clearValues[1] = {
-            .depthStencil = {1.0f, 0},
+                .depthStencil = {1.0f, 0},
         };
 
         VkRenderPassBeginInfo renderPassInfo {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = swapchain.vkRenderPass,
-            .framebuffer = swapchain.vkFramebuffers[i],
-            .renderArea = {
-                .offset = {0,0},
-                .extent = swapchain.extent,
-            },
-            .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-            .pClearValues = clearValues.data(),
+                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                .renderPass = swapchain.vkRenderPass,
+                .framebuffer = swapchain.vkFramebuffers[i],
+                .renderArea = {
+                        .offset = {0,0},
+                        .extent = swapchain.extent,
+                },
+                .clearValueCount = static_cast<uint32_t>(clearValues.size()),
+                .pClearValues = clearValues.data(),
         };
 
         vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -96,4 +101,6 @@ void App::createCommandBuffers() {
 void App::drawFrame() {
     swapchain.presentCommandBuffer(commandBuffers);
 }
+
+
 

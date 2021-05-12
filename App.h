@@ -19,7 +19,8 @@ class App {
 
     void createPipelineLayout();
     void createPipeline();
-    void createCommandBuffers();
+    void allocateCommandBuffers();
+    void recordCommandBuffers();
     void drawFrame();
 
 public:
