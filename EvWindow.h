@@ -8,10 +8,13 @@
 #include "utils.h"
 
 class EvWindow : NoCopy {
+private:
+    static void onResizeCallback(GLFWwindow* glfwWindow, int width, int height);
 public:
     int width, height;
     std::string name;
     GLFWwindow* glfwWindow;
+    bool wasResized = false;
 
     EvWindow(int w, int h, std::string name);
     ~EvWindow();

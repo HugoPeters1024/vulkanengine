@@ -8,6 +8,8 @@ EvWindow::EvWindow(int w, int h, std::string name) : width(w), height(h), name(n
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     glfwWindow = glfwCreateWindow(w, h, name.c_str(), nullptr, nullptr);
+    glfwSetWindowUserPointer(glfwWindow, this);
+    glfwSetWindowSizeCallback(glfwWindow, onResizeCallback);
 }
 
 EvWindow::~EvWindow() {
@@ -37,7 +39,20 @@ void EvWindow::processEvents() const {
 }
 
 void EvWindow::getFramebufferSize(int *width, int *height) const {
-    glfwGetFramebufferSize(glfwWindow, width, height);
+    *width = 0;
+    *height = 0;
+    do {
+        glfwGetFramebufferSize(glfwWindow, width, height);
+        glfwWaitEvents();
+    } while (*width == 0 || *height == 0);
+}
+
+void EvWindow::onResizeCallback(GLFWwindow* glfwWindow, int width, int height) {
+    auto window = reinterpret_cast<EvWindow*>(glfwGetWindowUserPointer(glfwWindow));
+    window->width = width;
+    window->height = height;
+    window->wasResized = true;
+    printf("window was resized to (%i, %i)\n", width, height);
 }
 
 
