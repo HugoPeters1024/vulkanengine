@@ -16,10 +16,6 @@ struct EvDeviceInfo {
 class EvDevice : NoCopy {
 private:
     bool isDeviceSuitable(VkPhysicalDevice physicalDevice) const;
-    std::vector<VkImage> createdImages;
-    std::vector<VkDeviceMemory> createdImagesMemory;
-    std::vector<VkImageView> createdImageViews;
-
     void finalizeInfo();
     void createInstance();
     void createSurface();
@@ -48,7 +44,7 @@ public:
     EvDevice(EvDeviceInfo info, EvWindow &window);
     ~EvDevice();
 
-    VkImage createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
-    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage* image, VkDeviceMemory* memory);
+    void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView);
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 };

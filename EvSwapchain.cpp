@@ -13,6 +13,19 @@ EvSwapchain::EvSwapchain(EvDevice &device) : device(device) {
 }
 
 EvSwapchain::~EvSwapchain() {
+    printf("Destroying image views\n");
+    for(const auto& view : vkImageViews)
+        vkDestroyImageView(device.vkDevice, view, nullptr);
+    vkDestroyImageView(device.vkDevice, vkDepthImageView, nullptr);
+
+    printf("Destroying images\n");
+    // main images are managed by the swap chain
+    vkDestroyImage(device.vkDevice, vkDepthImage, nullptr);
+
+    printf("Freeing memory\n");
+    vkFreeMemory(device.vkDevice, vkDepthImageMemory, nullptr);
+
+
     printf("Destroying fences\n");
 
     for(const auto& fence : inFlightFences)
@@ -87,14 +100,14 @@ void EvSwapchain::createSwapchain() {
 void EvSwapchain::createImageViews() {
     vkImageViews.resize((vkImages.size()));
     for(uint i=0; i<vkImageViews.size(); i++) {
-        vkImageViews[i] = device.createImageView(vkImages[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT);
+        device.createImageView(vkImages[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, &vkImageViews[i]);
     }
 }
 
 void EvSwapchain::createDepthResources() {
     VkFormat depthFormat = findDepthFormat(device.vkPhysicalDevice);
-    vkDepthImage = device.createImage(extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    vkDepthImageView = device.createImageView(vkDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+    device.createImage(extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vkDepthImage, &vkDepthImageMemory);
+    device.createImageView(vkDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, &vkDepthImageView);
 }
 
 void EvSwapchain::createFramebuffers() {

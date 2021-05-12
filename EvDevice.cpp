@@ -15,15 +15,6 @@ EvDevice::EvDevice(EvDeviceInfo info, EvWindow &window) : window(window), info(s
 }
 
 EvDevice::~EvDevice() {
-    printf("Destoyring image views\n");
-    for(const auto& imageView : createdImageViews)
-        vkDestroyImageView(vkDevice, imageView, nullptr);
-    printf("Destroying images\n");
-    for(const auto& image : createdImages)
-        vkDestroyImage(vkDevice, image, nullptr);
-    printf("Freeing device memory\n");
-    for(const auto& memory : createdImagesMemory)
-        vkFreeMemory(vkDevice, memory, nullptr);
     printf("Destroying commandPool\n");
     vkDestroyCommandPool(vkDevice, vkCommandPool, nullptr);
     printf("Destroying logical device\n");
@@ -175,10 +166,8 @@ bool EvDevice::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
     return deviceFeatures.samplerAnisotropy;
 }
 
-VkImage EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-                              VkMemoryPropertyFlags properties) {
-    VkImage image;
-    VkDeviceMemory memory;
+void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                              VkMemoryPropertyFlags properties, VkImage* image, VkDeviceMemory* memory) {
 
     VkImageCreateInfo imageInfo {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -198,10 +187,10 @@ VkImage EvDevice::createImage(uint width, uint height, VkFormat format, VkImageT
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    vkCheck(vkCreateImage(vkDevice, &imageInfo, nullptr, &image));
+    vkCheck(vkCreateImage(vkDevice, &imageInfo, nullptr, image));
 
     VkMemoryRequirements memoryRequirements;
-    vkGetImageMemoryRequirements(vkDevice, image, &memoryRequirements);
+    vkGetImageMemoryRequirements(vkDevice, *image, &memoryRequirements);
 
     VkMemoryAllocateInfo allocInfo {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
@@ -209,16 +198,11 @@ VkImage EvDevice::createImage(uint width, uint height, VkFormat format, VkImageT
         .memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, properties),
     };
 
-    vkCheck(vkAllocateMemory(vkDevice, &allocInfo, nullptr, &memory));
-    vkCheck(vkBindImageMemory(vkDevice, image, memory, 0));
-
-    createdImages.push_back(image);
-    createdImagesMemory.push_back(memory);
-    return image;
+    vkCheck(vkAllocateMemory(vkDevice, &allocInfo, nullptr, memory));
+    vkCheck(vkBindImageMemory(vkDevice, *image, *memory, 0));
 }
 
-VkImageView EvDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
-    VkImageView imageView;
+void EvDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView) {
 
     VkImageViewCreateInfo viewInfo {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -234,9 +218,7 @@ VkImageView EvDevice::createImageView(VkImage image, VkFormat format, VkImageAsp
         },
     };
 
-    vkCheck(vkCreateImageView(vkDevice, &viewInfo, nullptr, &imageView));
-    createdImageViews.push_back(imageView);
-    return imageView;
+    vkCheck(vkCreateImageView(vkDevice, &viewInfo, nullptr, imageView));
 }
 
 uint32_t EvDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
