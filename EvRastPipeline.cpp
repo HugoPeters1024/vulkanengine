@@ -4,47 +4,31 @@
 
 #include "utils.h"
 
-EvRastPipeline::EvRastPipeline(const EvDevice &device,
-                               const EvRastPipelineInfo &info,
-                               const char *vertFile,
-                               const char *fragFile)
+EvRastPipeline::EvRastPipeline(const EvDevice &device, const EvRastPipelineInfo &info)
                                : device(device) {
-    createGraphicsPipeline(info, vertFile, fragFile);
+    createGraphicsPipeline(info);
 }
 
 EvRastPipeline::~EvRastPipeline() {
-    printf("destroying shader modules\n");
-    vkDestroyShaderModule(device.vkDevice, vkVertShaderModule, nullptr);
-    vkDestroyShaderModule(device.vkDevice, vkFragShaderModule, nullptr);
-
     printf("Destroying the pipeline\n");
     vkDestroyPipeline(device.vkDevice, vkPipeline, nullptr);
 }
 
 
-void EvRastPipeline::createGraphicsPipeline(EvRastPipelineInfo info, const char *vertFile, const char *fragFile) {
+void EvRastPipeline::createGraphicsPipeline(const EvRastPipelineInfo& info) {
     assert(info.renderPass != VK_NULL_HANDLE);
-
-    auto vertCode = readFile(vertFile);
-    auto fragCode = readFile(fragFile);
-
-    printf("vertex shader:   %lu bytes\n", vertCode.size());
-    printf("fragment shader: %lu bytes\n", fragCode.size());
-
-    vkVertShaderModule = createShaderModule(vertCode);
-    vkFragShaderModule = createShaderModule(fragCode);
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_VERTEX_BIT,
-        .module = vkVertShaderModule,
+        .module = info.vertShaderModule,
         .pName = "main",
     };
 
     VkPipelineShaderStageCreateInfo fragShaderStageInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-        .module = vkFragShaderModule,
+        .module = info.fragShaderModule,
         .pName = "main",
     };
 
@@ -58,13 +42,6 @@ void EvRastPipeline::createGraphicsPipeline(EvRastPipelineInfo info, const char 
         .pVertexAttributeDescriptions = nullptr,
     };
 
-    VkPipelineViewportStateCreateInfo viewportInfo {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = 1,
-        .pViewports = &info.viewPort,
-        .scissorCount = 1,
-        .pScissors = &info.scissor,
-    };
 
     VkPipelineColorBlendStateCreateInfo blendStateCreateInfo {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -80,31 +57,18 @@ void EvRastPipeline::createGraphicsPipeline(EvRastPipelineInfo info, const char 
         .pStages = shaderStages,
         .pVertexInputState = &vertexInputStateCreateInfo,
         .pInputAssemblyState = &info.inputAssemblyStateCreateInfo,
-        .pViewportState = &viewportInfo,
+        .pViewportState = &info.viewportInfo,
         .pRasterizationState = &info.rasterizationStateCreateInfo,
         .pMultisampleState = &info.multisampleStateCreateInfo,
         .pDepthStencilState = &info.depthStencilStateCreateInfo,
         .pColorBlendState = &blendStateCreateInfo,
-        .pDynamicState = nullptr,
+        .pDynamicState = &info.dynamicStateCreateInfo,
         .layout = info.layout,
         .renderPass = info.renderPass,
         .subpass = info.subpass,
     };
 
     vkCheck(vkCreateGraphicsPipelines(device.vkDevice, VK_NULL_HANDLE, 1, &createInfo, nullptr, &vkPipeline));
-}
-
-
-VkShaderModule EvRastPipeline::createShaderModule(const std::vector<char>& code) const {
-    VkShaderModuleCreateInfo createInfo {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = code.size(),
-        .pCode = reinterpret_cast<const uint32_t*>(code.data()),
-    };
-
-    VkShaderModule shaderModule;
-    vkCheck(vkCreateShaderModule(device.vkDevice, &createInfo, nullptr, &shaderModule));
-    return shaderModule;
 }
 
 void EvRastPipeline::bind(VkCommandBuffer commandBuffer) const {

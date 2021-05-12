@@ -47,4 +47,5 @@ public:
     void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView);
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
     SwapchainSupportDetails getSwapchainSupportDetails() const;
+    VkShaderModule createShaderModule(const char* filepath) const;
 };

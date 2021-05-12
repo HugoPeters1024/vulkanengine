@@ -2,6 +2,7 @@
 #include "utils.h"
 
 App::App() {
+    createShaderModules();
     createSwapchain();
     createPipelineLayout();
     createPipeline();
@@ -10,12 +11,15 @@ App::App() {
 }
 
 App::~App() {
+    printf("Destroying the shader modules\n");
+    vkDestroyShaderModule(device.vkDevice, vertShaderModule, nullptr);
+    vkDestroyShaderModule(device.vkDevice, fragShaderModule, nullptr);
+
     printf("Destroying pipeline layout\n");
     vkDestroyPipelineLayout(device.vkDevice, vkPipelineLayout, nullptr);
 }
 
 void App::Run() {
-
     while (!window.shouldClose()) {
         window.processEvents();
         drawFrame();
@@ -24,6 +28,11 @@ void App::Run() {
     printf("Flushing GPU before shutdown...\n");
     vkDeviceWaitIdle(device.vkDevice);
     printf("Goodbye!\n");
+}
+
+void App::createShaderModules() {
+    vertShaderModule = device.createShaderModule("shaders_bin/shader.vert.spv");
+    fragShaderModule = device.createShaderModule("shaders_bin/shader.frag.spv");
 }
 
 void App::createSwapchain() {
@@ -44,12 +53,11 @@ void App::createPipelineLayout() {
 }
 
 void App::createPipeline() {
-    pipelineInfo = defaultRastPipelineInfo(swapchain->extent.width, swapchain->extent.height);
+    defaultRastPipelineInfo(swapchain->extent.width, swapchain->extent.height, vertShaderModule, fragShaderModule, &pipelineInfo);
     pipelineInfo.renderPass = swapchain->vkRenderPass;
     pipelineInfo.layout = vkPipelineLayout;
 
-    rastPipeline = std::make_unique<EvRastPipeline>(
-            device, pipelineInfo, "shaders_bin/shader.vert.spv", "shaders_bin/shader.frag.spv");
+    rastPipeline = std::make_unique<EvRastPipeline>(device, pipelineInfo);
 }
 
 void App::allocateCommandBuffers() {
@@ -94,8 +102,19 @@ void App::recordCommandBuffers() {
                 .clearValueCount = static_cast<uint32_t>(clearValues.size()),
                 .pClearValues = clearValues.data(),
         };
+        VkViewport viewport {
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(swapchain->extent.width),
+            .height = static_cast<float>(swapchain->extent.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        };
+        VkRect2D scissor{{0,0}, swapchain->extent};
 
         vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
+        vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
         rastPipeline->bind(commandBuffers[i]);
         vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
         vkCmdEndRenderPass(commandBuffers[i]);
@@ -132,6 +151,7 @@ void App::recreateSwapchain() {
     createPipeline();
     recordCommandBuffers();
 }
+
 
 
 

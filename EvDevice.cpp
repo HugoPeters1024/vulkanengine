@@ -234,4 +234,18 @@ SwapchainSupportDetails EvDevice::getSwapchainSupportDetails() const {
     return querySwapchainSupport(vkPhysicalDevice, vkSurface);
 }
 
+VkShaderModule EvDevice::createShaderModule(const char* filepath) const {
+    auto code = readFile(filepath);
+    printf("shader module %s constains %lu bytes\n", filepath, code.size());
+    VkShaderModuleCreateInfo createInfo {
+            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .codeSize = code.size(),
+            .pCode = reinterpret_cast<const uint32_t*>(code.data()),
+    };
+
+    VkShaderModule shaderModule;
+    vkCheck(vkCreateShaderModule(vkDevice, &createInfo, nullptr, &shaderModule));
+    return shaderModule;
+}
+
 

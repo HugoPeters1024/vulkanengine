@@ -8,15 +8,18 @@
 #pragma once
 
 class App {
-    EvWindow window{640, 480, "My app"};
+    EvWindow window = EvWindow(640, 480, "My app");
     EvDeviceInfo deviceInfo{};
     EvDevice device{deviceInfo, window};
     std::unique_ptr<EvSwapchain> swapchain;
     VkPipelineLayout vkPipelineLayout;
+    VkShaderModule vertShaderModule;
+    VkShaderModule fragShaderModule;
     EvRastPipelineInfo pipelineInfo{};
     std::unique_ptr<EvRastPipeline> rastPipeline{};
     std::vector<VkCommandBuffer> commandBuffers{};
 
+    void createShaderModules();
     void createSwapchain();
     void createPipelineLayout();
     void createPipeline();

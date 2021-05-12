@@ -5,14 +5,17 @@
 #include <string>
 #include <vector>
 
-struct EvRastPipelineInfo {
-    VkViewport viewPort;
-    VkRect2D scissor;
+struct EvRastPipelineInfo : NoCopy {
+    VkShaderModule vertShaderModule;
+    VkShaderModule fragShaderModule;
+    VkPipelineViewportStateCreateInfo viewportInfo;
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo;
     VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo;
     VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo;
     VkPipelineColorBlendAttachmentState blendAttachmentState;
     VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo;
+    std::vector<VkDynamicState> dynamicStateEnables;
+    VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo;
     VkRenderPass renderPass = nullptr;
     VkPipelineLayout layout = nullptr;
     uint subpass = 0;
@@ -22,32 +25,23 @@ class EvRastPipeline : NoCopy {
 private:
     const EvDevice& device;
     VkPipeline vkPipeline;
-    VkShaderModule vkVertShaderModule;
-    VkShaderModule vkFragShaderModule;
 
-    void createGraphicsPipeline(EvRastPipelineInfo info, const char *vertFile, const char *fragFile);
-    VkShaderModule createShaderModule(const std::vector<char>& code) const;
+    void createGraphicsPipeline(const EvRastPipelineInfo& info);
 
 public:
-    EvRastPipeline(const EvDevice& device, const EvRastPipelineInfo &info, const char *vertFile, const char *fragFile);
+    EvRastPipeline(const EvDevice& device, const EvRastPipelineInfo &info);
     ~EvRastPipeline();
 
     void bind(VkCommandBuffer commandBuffer) const;
 };
 
-inline EvRastPipelineInfo defaultRastPipelineInfo(uint width, uint height) {
-    VkViewport viewport {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = static_cast<float>(width),
-        .height = static_cast<float>(height),
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f,
-    };
-
-    VkRect2D scissor {
-        .offset = {0,0},
-        .extent = {width, height},
+inline void defaultRastPipelineInfo(uint width, uint height, VkShaderModule vertShaderModule, VkShaderModule fragShaderModule, EvRastPipelineInfo* info) {
+    VkPipelineViewportStateCreateInfo viewportInfo {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+            .viewportCount = 1,
+            .pViewports = nullptr,
+            .scissorCount = 1,
+            .pScissors = nullptr,
     };
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo {
@@ -100,13 +94,20 @@ inline EvRastPipelineInfo defaultRastPipelineInfo(uint width, uint height) {
         .maxDepthBounds = 1.0f,
     };
 
-    return EvRastPipelineInfo {
-        .viewPort = viewport,
-        .scissor = scissor,
-        .inputAssemblyStateCreateInfo = inputAssemblyStateCreateInfo,
-        .rasterizationStateCreateInfo = rasterizationStateCreateInfo,
-        .multisampleStateCreateInfo = multisampleStateCreateInfo,
-        .blendAttachmentState = blendAttachmentState,
-        .depthStencilStateCreateInfo = depthStencilStateCreateInfo,
+    info->dynamicStateEnables = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    info->dynamicStateCreateInfo = VkPipelineDynamicStateCreateInfo {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .flags = 0,
+        .dynamicStateCount = static_cast<uint32_t >(info->dynamicStateEnables.size()),
+        .pDynamicStates = info->dynamicStateEnables.data(),
     };
+
+    info->vertShaderModule = vertShaderModule;
+    info->fragShaderModule = fragShaderModule;
+    info->viewportInfo = viewportInfo;
+    info->inputAssemblyStateCreateInfo = inputAssemblyStateCreateInfo;
+    info->rasterizationStateCreateInfo = rasterizationStateCreateInfo;
+    info->multisampleStateCreateInfo = multisampleStateCreateInfo;
+    info->blendAttachmentState = blendAttachmentState;
+    info->depthStencilStateCreateInfo = depthStencilStateCreateInfo;
 }
