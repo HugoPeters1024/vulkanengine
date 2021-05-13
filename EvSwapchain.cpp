@@ -2,13 +2,14 @@
 #include "UtilsMemory.h"
 #include <array>
 #include <cassert>
+#include <utility>
 
 EvSwapchain::EvSwapchain(EvDevice &device) : device(device) {
     init();
 }
 
 EvSwapchain::EvSwapchain(EvDevice &device, std::shared_ptr<EvSwapchain> previous)
-    : device(device), oldSwapchain(previous) {
+    : device(device), oldSwapchain(std::move(previous)) {
     init();
     oldSwapchain.reset();
 }
@@ -265,15 +266,17 @@ VkExtent2D EvSwapchain::chooseSwapExtent() const {
 }
 
 VkResult EvSwapchain::acquireNextSwapchainImage(uint32_t *imageIndex) {
-    vkWaitForFences(device.vkDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
     return vkAcquireNextImageKHR(device.vkDevice, vkSwapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, imageIndex);
 }
 
-VkResult EvSwapchain::presentCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+void EvSwapchain::waitForImageReady(uint32_t imageIndex) {
+    vkWaitForFences(device.vkDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
     if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device.vkDevice, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
+}
 
+VkResult EvSwapchain::presentCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
     imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
     std::array<VkSemaphore,1> waitSemaphores = { imageAvailableSemaphores[currentFrame] };
@@ -308,6 +311,7 @@ VkResult EvSwapchain::presentCommandBuffer(VkCommandBuffer commandBuffer, uint32
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     return vkQueuePresentKHR(device.presentQueue, &presentInfo);
 }
+
 
 
 

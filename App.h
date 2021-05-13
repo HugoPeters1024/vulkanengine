@@ -4,6 +4,7 @@
 #include "EvDevice.h"
 #include "EvSwapchain.h"
 #include "EvRastPipeline.h"
+#include "ShaderTypes.h"
 
 #pragma once
 
@@ -18,13 +19,18 @@ class App {
     EvRastPipelineInfo pipelineInfo{};
     std::unique_ptr<EvRastPipeline> rastPipeline{};
     std::vector<VkCommandBuffer> commandBuffers{};
+    Lol push = Lol {
+        .offset = {0,0},
+        .color = {1,1,1},
+    };
+    float time = 0;
 
     void createShaderModules();
     void createSwapchain();
     void createPipelineLayout();
     void createPipeline();
     void allocateCommandBuffers();
-    void recordCommandBuffers();
+    void recordCommandBuffer(uint imageIndex);
     void drawFrame();
     void recreateSwapchain();
 

@@ -25,6 +25,7 @@ private:
     VkSurfaceFormatKHR chooseSwapSurfaceFormat() const;
     VkPresentModeKHR  chooseSwapPresentMode() const;
     VkExtent2D chooseSwapExtent() const;
+
 public:
     VkSwapchainKHR vkSwapchain;
     std::vector<VkImage> vkImages;
@@ -42,5 +43,6 @@ public:
     ~EvSwapchain();
 
     VkResult acquireNextSwapchainImage(uint32_t* imageIndex);
+    void waitForImageReady(uint32_t imageIndex);
     VkResult presentCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 };

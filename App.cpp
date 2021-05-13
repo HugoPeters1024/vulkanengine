@@ -1,5 +1,6 @@
 #include "App.h"
 #include "utils.h"
+#include "ShaderTypes.h"
 
 App::App() {
     createShaderModules();
@@ -7,7 +8,6 @@ App::App() {
     createPipelineLayout();
     createPipeline();
     allocateCommandBuffers();
-    recordCommandBuffers();
 }
 
 App::~App() {
@@ -23,6 +23,8 @@ void App::Run() {
     while (!window.shouldClose()) {
         window.processEvents();
         drawFrame();
+        time += 0.01f;
+        push.offset.x = sin(time);
     }
 
     printf("Flushing GPU before shutdown...\n");
@@ -44,12 +46,18 @@ void App::createSwapchain() {
 }
 
 void App::createPipelineLayout() {
+    VkPushConstantRange pushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset = 0,
+        .size = sizeof(Lol),
+    };
+
     VkPipelineLayoutCreateInfo createInfo {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount = 0,
             .pSetLayouts = nullptr,
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges = nullptr,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges = &pushConstantRange,
     };
 
     vkCheck(vkCreatePipelineLayout(device.vkDevice, &createInfo, nullptr, &vkPipelineLayout));
@@ -76,53 +84,63 @@ void App::allocateCommandBuffers() {
     vkCheck(vkAllocateCommandBuffers(device.vkDevice, &createInfo, commandBuffers.data()));
 }
 
-void App::recordCommandBuffers() {
-    for(uint i=0; i<commandBuffers.size(); i++) {
-        vkCheck(vkResetCommandBuffer(commandBuffers[i], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+void App::recordCommandBuffer(uint imageIndex) {
+    assert(imageIndex < commandBuffers.size());
+    vkCheck(vkResetCommandBuffer(commandBuffers[imageIndex], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
-        VkCommandBufferBeginInfo beginInfo{
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        };
+    VkCommandBufferBeginInfo beginInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
 
-        vkCheck(vkBeginCommandBuffer(commandBuffers[i], &beginInfo));
+    vkCheck(vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo));
 
-        std::array<VkClearValue, 2> clearValues {};
-        clearValues[0] = {
-                .color = {0.0f, 0.1f, 0.1f, 1.0f},
-        };
-        clearValues[1] = {
-                .depthStencil = {1.0f, 0},
-        };
+    std::array<VkClearValue, 2> clearValues {};
+    clearValues[0] = {
+            .color = {0.0f, 0.1f, 0.1f, 1.0f},
+    };
+    clearValues[1] = {
+            .depthStencil = {1.0f, 0},
+    };
 
-        VkRenderPassBeginInfo renderPassInfo {
-                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                .renderPass = swapchain->vkRenderPass,
-                .framebuffer = swapchain->vkFramebuffers[i],
-                .renderArea = {
-                        .offset = {0,0},
-                        .extent = swapchain->extent,
-                },
-                .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-                .pClearValues = clearValues.data(),
-        };
-        VkViewport viewport {
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = static_cast<float>(swapchain->extent.width),
-            .height = static_cast<float>(swapchain->extent.height),
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
-        };
-        VkRect2D scissor{{0,0}, swapchain->extent};
+    VkRenderPassBeginInfo renderPassInfo {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = swapchain->vkRenderPass,
+            .framebuffer = swapchain->vkFramebuffers[imageIndex],
+            .renderArea = {
+                    .offset = {0,0},
+                    .extent = swapchain->extent,
+            },
+            .clearValueCount = static_cast<uint32_t>(clearValues.size()),
+            .pClearValues = clearValues.data(),
+    };
+    VkViewport viewport {
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = static_cast<float>(swapchain->extent.width),
+        .height = static_cast<float>(swapchain->extent.height),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
+    VkRect2D scissor{{0,0}, swapchain->extent};
 
-        vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
-        vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
-        rastPipeline->bind(commandBuffers[i]);
-        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
-        vkCmdEndRenderPass(commandBuffers[i]);
-        vkCheck(vkEndCommandBuffer(commandBuffers[i]));
-    }
+    vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+    vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
+    rastPipeline->bind(commandBuffers[imageIndex]);
+
+    vkCmdPushConstants(
+            commandBuffers[imageIndex],
+            vkPipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0,
+            sizeof(push),
+            &push);
+
+
+    vkCmdDraw(commandBuffers[imageIndex], 3, 1, 0, 0);
+    vkCmdEndRenderPass(commandBuffers[imageIndex]);
+    vkCheck(vkEndCommandBuffer(commandBuffers[imageIndex]));
 }
 
 void App::drawFrame() {
@@ -136,6 +154,8 @@ void App::drawFrame() {
         throw std::runtime_error("Failed to acquire swapchain image");
     }
 
+    swapchain->waitForImageReady(imageIndex);
+    recordCommandBuffer(imageIndex);
     VkResult presentResult = swapchain->presentCommandBuffer(commandBuffers[imageIndex], imageIndex);
 
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || window.wasResized) {
@@ -152,7 +172,6 @@ void App::recreateSwapchain() {
     vkCheck(vkDeviceWaitIdle(device.vkDevice));
     createSwapchain();
   //  createPipeline();
-    recordCommandBuffers();
 }
 
 

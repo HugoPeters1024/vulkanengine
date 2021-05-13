@@ -2,3 +2,4 @@
 cmake-build-debug
 cmake-build-release
 shaders/*.spv
+shaders_bin/*
