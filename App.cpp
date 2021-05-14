@@ -1,6 +1,7 @@
 #include "App.h"
 #include "utils.h"
 #include "ShaderTypes.h"
+#include "EvModel.h"
 
 App::App() {
     createShaderModules();
@@ -8,6 +9,7 @@ App::App() {
     createPipelineLayout();
     createPipeline();
     allocateCommandBuffers();
+    loadModel();
 }
 
 App::~App() {
@@ -84,6 +86,15 @@ void App::allocateCommandBuffers() {
     vkCheck(vkAllocateCommandBuffers(device.vkDevice, &createInfo, commandBuffers.data()));
 }
 
+void App::loadModel() {
+    std::vector<Vertex> vertices = {
+            {{0.0f, -0.5f, 0.0f}},
+            {{-0.5f, 0.5f, 0.0f}},
+            {{0.5f, 0.5f, 0.0f}},
+    };
+    model = std::make_unique<EvModel>(device, vertices);
+}
+
 void App::recordCommandBuffer(uint imageIndex) {
     assert(imageIndex < commandBuffers.size());
     vkCheck(vkResetCommandBuffer(commandBuffers[imageIndex], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
@@ -128,6 +139,8 @@ void App::recordCommandBuffer(uint imageIndex) {
     vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
     vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
     rastPipeline->bind(commandBuffers[imageIndex]);
+    model->bind(commandBuffers[imageIndex]);
+    model->draw(commandBuffers[imageIndex]);
 
     vkCmdPushConstants(
             commandBuffers[imageIndex],
@@ -168,11 +181,12 @@ void App::drawFrame() {
 }
 
 void App::recreateSwapchain() {
-    window.waitForEvent();
     vkCheck(vkDeviceWaitIdle(device.vkDevice));
+    window.waitForEvent();
     createSwapchain();
   //  createPipeline();
 }
+
 
 
 

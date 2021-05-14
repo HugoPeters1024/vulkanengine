@@ -249,3 +249,27 @@ VkShaderModule EvDevice::createShaderModule(const char* filepath) const {
 }
 
 
+void EvDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *bufferMemory) {
+    VkBufferCreateInfo bufferInfo {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = size,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+
+    vkCheck(vkCreateBuffer(vkDevice, &bufferInfo, nullptr, buffer));
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(vkDevice, *buffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = memRequirements.size,
+        .memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties),
+    };
+
+    vkCheck(vkAllocateMemory(vkDevice, &allocInfo, nullptr, bufferMemory));
+    vkCheck(vkBindBufferMemory(vkDevice, *buffer, *bufferMemory, 0));
+}
+
+

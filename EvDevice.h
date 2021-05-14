@@ -48,4 +48,5 @@ public:
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
     SwapchainSupportDetails getSwapchainSupportDetails() const;
     VkShaderModule createShaderModule(const char* filepath) const;
+    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* bufferMemory);
 };

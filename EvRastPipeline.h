@@ -1,9 +1,11 @@
 #pragma once
 
 #include "EvDevice.h"
+#include "EvModel.h"
 #include <vulkan/vulkan.h>
 #include <string>
 #include <vector>
+
 
 struct EvRastPipelineInfo : NoCopy {
     VkShaderModule vertShaderModule;

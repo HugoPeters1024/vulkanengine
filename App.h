@@ -19,6 +19,7 @@ class App {
     EvRastPipelineInfo pipelineInfo{};
     std::unique_ptr<EvRastPipeline> rastPipeline{};
     std::vector<VkCommandBuffer> commandBuffers{};
+    std::unique_ptr<EvModel> model{};
     Lol push = Lol {
         .offset = {0,0},
         .color = {1,1,1},
@@ -30,6 +31,7 @@ class App {
     void createPipelineLayout();
     void createPipeline();
     void allocateCommandBuffers();
+    void loadModel();
     void recordCommandBuffer(uint imageIndex);
     void drawFrame();
     void recreateSwapchain();

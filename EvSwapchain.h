@@ -6,7 +6,7 @@
 class EvSwapchain {
 private:
     EvDevice& device;
-    const int MAX_FRAMES_IN_FLIGHT = 2;
+    const int MAX_FRAMES_IN_FLIGHT = 3;
     uint currentFrame = 0;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
