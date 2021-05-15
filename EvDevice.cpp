@@ -272,4 +272,64 @@ void EvDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemor
     vkCheck(vkBindBufferMemory(vkDevice, *buffer, *bufferMemory, 0));
 }
 
+void EvDevice::createDeviceBuffer(VkDeviceSize size, void* src, VkBufferUsageFlags usage, VkBuffer *buffer, VkDeviceMemory *bufferMemory) {
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
+    void* data;
+    vkCheck(vkMapMemory(vkDevice, stagingBufferMemory, 0, size, 0, &data));
+    memcpy(data, src, static_cast<size_t>(size));
+    vkUnmapMemory(vkDevice, stagingBufferMemory);
+
+    createBuffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, bufferMemory);
+    copyBuffer(*buffer, stagingBuffer, size);
+
+    vkDestroyBuffer(vkDevice, stagingBuffer, nullptr);
+    vkFreeMemory(vkDevice, stagingBufferMemory, nullptr);
+}
+
+VkCommandBuffer EvDevice::beginSingleTimeCommands() {
+    VkCommandBufferAllocateInfo allocInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = vkCommandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer commandBuffer;
+    vkCheck(vkAllocateCommandBuffers(vkDevice, &allocInfo, &commandBuffer));
+
+    VkCommandBufferBeginInfo beginInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+    vkCheck(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+    return commandBuffer;
+}
+
+void EvDevice::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
+    vkCheck(vkEndCommandBuffer(commandBuffer));
+    VkSubmitInfo submitInfo {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &commandBuffer,
+    };
+
+    vkCheck(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+    vkQueueWaitIdle(graphicsQueue);
+    vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &commandBuffer);
+}
+
+void EvDevice::copyBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize size) {
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+    VkBufferCopy copyRegion {
+        .size = size,
+    };
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+    endSingleTimeCommands(commandBuffer);
+}
+
+
+
 

@@ -16,12 +16,7 @@ void EvModel::createVertexBuffers(const std::vector<Vertex> &vertices) {
     assert(vertexCount > 0 && vertexCount % 3 == 0 && "vertexCount not a multiple of 3");
 
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-    device.createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vkVertexBuffer, &vkVertexMemory);
-
-    void* data;
-    vkCheck(vkMapMemory(device.vkDevice, vkVertexMemory, 0, bufferSize, 0, &data));
-    memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-    vkUnmapMemory(device.vkDevice, vkVertexMemory);
+    device.createDeviceBuffer(bufferSize, (void*)vertices.data(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &vkVertexBuffer, &vkVertexMemory);
 }
 
 void EvModel::bind(VkCommandBuffer commandBuffer) {
