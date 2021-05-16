@@ -8,8 +8,7 @@ using namespace glm;
 
 struct Lol
 {
-    vec2 offset;
-    vec3 color;
+    mat4 transform;
 };
 
 #endif

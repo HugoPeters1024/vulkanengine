@@ -5,6 +5,8 @@
 #include "EvSwapchain.h"
 #include "EvRastPipeline.h"
 #include "ShaderTypes.h"
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
 
 #pragma once
 
@@ -20,10 +22,6 @@ class App {
     std::unique_ptr<EvRastPipeline> rastPipeline{};
     std::vector<VkCommandBuffer> commandBuffers{};
     std::unique_ptr<EvModel> model{};
-    Lol push = Lol {
-        .offset = {0,0},
-        .color = {1,1,1},
-    };
     float time = 0;
 
     void createShaderModules();

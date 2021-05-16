@@ -26,7 +26,6 @@ void App::Run() {
         window.processEvents();
         drawFrame();
         time += 0.01f;
-        push.offset.x = sin(time);
     }
 
     printf("Flushing GPU before shutdown...\n");
@@ -141,6 +140,10 @@ void App::recordCommandBuffer(uint imageIndex) {
     rastPipeline->bind(commandBuffers[imageIndex]);
     model->bind(commandBuffers[imageIndex]);
     model->draw(commandBuffers[imageIndex]);
+
+    Lol push{
+        .transform = glm::rotate(glm::translate(glm::mat4x4(1.0f), glm::vec3(0,0,0.5f)), time, glm::vec3(0,1,0)),
+    };
 
     vkCmdPushConstants(
             commandBuffers[imageIndex],

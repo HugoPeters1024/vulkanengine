@@ -9,11 +9,9 @@ vec2 positions[3] = vec2[](
 );
 
 layout (push_constant) uniform Lol {
-    vec2 offset;
-    vec3 color;
+    mat4 transform;
 } lol;
 
 void main() {
-    //gl_Position = vec4(positions[gl_VertexIndex] + lol.offset, 0.0f, 1.0f);
-    gl_Position = vec4(position + vec3(lol.offset,0), 1.0f);
+    gl_Position = lol.transform * vec4(position, 1.0f);
 }
