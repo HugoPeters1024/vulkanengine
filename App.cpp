@@ -10,6 +10,7 @@ App::App() {
     createPipeline();
     allocateCommandBuffers();
     loadModel();
+    createECS();
 }
 
 App::~App() {
@@ -22,6 +23,8 @@ App::~App() {
 }
 
 void App::Run() {
+
+
     while (!window.shouldClose()) {
         window.processEvents();
         drawFrame();
@@ -94,6 +97,17 @@ void App::loadModel() {
     model = std::make_unique<EvModel>(device, vertices);
 }
 
+void App::createECS() {
+    ecsCoordinator.RegisterComponent<RenderComponent>();
+    renderSystem = ecsCoordinator.RegisterSystem<RenderSystem>(ecsCoordinator);
+    Signature signature;
+    signature.set(ecsCoordinator.GetComponentType<RenderComponent>());
+    ecsCoordinator.SetSystemSignature<RenderSystem>(signature);
+
+    auto triangle = ecsCoordinator.CreateEntity();
+    ecsCoordinator.AddComponent(triangle, RenderComponent{model.get()});
+}
+
 void App::recordCommandBuffer(uint imageIndex) {
     assert(imageIndex < commandBuffers.size());
     vkCheck(vkResetCommandBuffer(commandBuffers[imageIndex], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
@@ -138,13 +152,9 @@ void App::recordCommandBuffer(uint imageIndex) {
     vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
     vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
     rastPipeline->bind(commandBuffers[imageIndex]);
-    model->bind(commandBuffers[imageIndex]);
-    model->draw(commandBuffers[imageIndex]);
-
     Lol push{
-        .transform = glm::rotate(glm::translate(glm::mat4x4(1.0f), glm::vec3(0,0,0.5f)), time, glm::vec3(0,1,0)),
+            .transform = glm::rotate(glm::translate(glm::mat4x4(1.0f), glm::vec3(0,0,0.5f)), time, glm::vec3(0,1,0)),
     };
-
     vkCmdPushConstants(
             commandBuffers[imageIndex],
             vkPipelineLayout,
@@ -153,11 +163,16 @@ void App::recordCommandBuffer(uint imageIndex) {
             sizeof(push),
             &push);
 
+    renderSystem->Render(commandBuffers[imageIndex]);
+   // model->bind(commandBuffers[imageIndex]);
+    //model->draw(commandBuffers[imageIndex]);
 
-    vkCmdDraw(commandBuffers[imageIndex], 3, 1, 0, 0);
+
+
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
     vkCheck(vkEndCommandBuffer(commandBuffers[imageIndex]));
 }
+
 
 void App::drawFrame() {
     uint32_t imageIndex;
@@ -189,6 +204,7 @@ void App::recreateSwapchain() {
     createSwapchain();
   //  createPipeline();
 }
+
 
 
 

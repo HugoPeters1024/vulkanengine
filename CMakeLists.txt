@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 
 file(GLOB src CONFIGURE_DEPENDS "*.h" "*.hpp" "*.cpp")
 
+
+
 macro(shader)
     add_custom_command(
             OUTPUT shaders_bin/${ARGV0}.spv
@@ -22,6 +24,10 @@ shader("shader.frag")
 
 
 add_executable(vulkanray ${src})
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/ecs)
+link_directories(${CMAKE_SOURCE_DIR}/ecs)
+target_link_libraries(vulkanray ecs)
 
 find_package(glm REQUIRED)
 message(STATUS "GLM included at ${GLM_INCLUDE_DIR}")

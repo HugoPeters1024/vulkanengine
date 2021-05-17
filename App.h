@@ -8,6 +8,9 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 
+#include "ecs/ecs.h"
+#include "RenderSystem.h"
+
 #pragma once
 
 class App {
@@ -24,10 +27,14 @@ class App {
     std::unique_ptr<EvModel> model{};
     float time = 0;
 
+    EcsCoordinator ecsCoordinator;
+    std::shared_ptr<RenderSystem> renderSystem;
+
     void createShaderModules();
     void createSwapchain();
     void createPipelineLayout();
     void createPipeline();
+    void createECS();
     void allocateCommandBuffers();
     void loadModel();
     void recordCommandBuffer(uint imageIndex);

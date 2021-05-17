@@ -1,0 +1,5 @@
+project(ecs CXX)
+include_directories(${PROJECT_SOURCE_DIR}/ecs/)
+file(GLOB src CONFIGURE_DEPENDS "*.h" "*.hpp" "*.cpp")
+add_library(ecs ${src})
+set_target_properties(ecs PROPERTIES LINKER_LANGUAGE CXX)
