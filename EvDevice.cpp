@@ -26,7 +26,9 @@ EvDevice::~EvDevice() {
 }
 
 void EvDevice::finalizeInfo() {
+#ifndef NDEBUG
     info.validationLayers.insert("VK_LAYER_KHRONOS_validation");
+#endif
     info.deviceExtensions.insert(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     window.collectInstanceExtensions(info.instanceExtensions);
 }

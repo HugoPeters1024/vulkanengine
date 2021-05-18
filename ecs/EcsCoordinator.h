@@ -65,7 +65,13 @@ public:
 
     template<typename T, typename... Args>
     std::shared_ptr<T> RegisterSystem(Args&&... args) {
-        return m_systemManager->RegisterSystem<T>(std::forward<Args>(args)...);
+        auto system = m_systemManager->RegisterSystem<T>(std::forward<Args>(args)...);
+        // set reference to myself
+        system->m_coordinator = this;
+
+        // now call upons the signature
+        SetSystemSignature<T>(system->GetSignature());
+        return system;
     }
 
 
