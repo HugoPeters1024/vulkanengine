@@ -6,9 +6,7 @@ EvModel::EvModel(EvDevice &device, const std::vector<Vertex> &vertices) : device
 
 EvModel::~EvModel() {
     printf("Destroying vertex buffer\n");
-    vkDestroyBuffer(device.vkDevice, vkVertexBuffer, nullptr);
-    printf("Free vertex buffer memory");
-    vkFreeMemory(device.vkDevice, vkVertexMemory, nullptr);
+    vmaDestroyBuffer(device.vmaAllocator, vkVertexBuffer, vkVertexMemory);
 }
 
 void EvModel::createVertexBuffers(const std::vector<Vertex> &vertices) {

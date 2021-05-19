@@ -41,13 +41,10 @@ EvSwapchain::~EvSwapchain() {
 
     printf("Destroying images\n");
     // main images are managed by the swap chain
-    vkDestroyImage(device.vkDevice, vkDepthImage, nullptr);
-
-    printf("Freeing memory\n");
-    vkFreeMemory(device.vkDevice, vkDepthImageMemory, nullptr);
+    vmaDestroyImage(device.vmaAllocator, vkDepthImage, vkDepthImageMemory);
 
     printf("Destroying frame buffers\n");
-    for(const auto& framebuffer : vkFramebuffers){
+    for(const auto& framebuffer : vkFramebuffers) {
         vkDestroyFramebuffer(device.vkDevice, framebuffer, nullptr);
     }
 

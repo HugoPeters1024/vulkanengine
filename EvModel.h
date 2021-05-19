@@ -19,7 +19,7 @@ class EvModel : NoCopy {
 private:
     EvDevice& device;
     VkBuffer vkVertexBuffer;
-    VkDeviceMemory vkVertexMemory;
+    VmaAllocation vkVertexMemory;
     uint32_t vertexCount;
 
     void createVertexBuffers(const std::vector<Vertex>& vertices);

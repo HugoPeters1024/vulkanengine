@@ -5,18 +5,24 @@
 #include <utility>
 #include "UtilsPhysicalDevice.h"
 
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
+
 EvDevice::EvDevice(EvDeviceInfo info, EvWindow &window) : window(window), info(std::move(info)) {
     finalizeInfo();
     createInstance();
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
+    createAllocator();
     createCommandPool();
 }
 
 EvDevice::~EvDevice() {
     printf("Destroying commandPool\n");
     vkDestroyCommandPool(vkDevice, vkCommandPool, nullptr);
+    printf("Destroying the VMA allocator\n");
+    vmaDestroyAllocator(vmaAllocator);
     printf("Destroying logical device\n");
     vkDestroyDevice(vkDevice, nullptr);
     printf("Destroying surface\n");
@@ -30,6 +36,11 @@ void EvDevice::finalizeInfo() {
     info.validationLayers.insert("VK_LAYER_KHRONOS_validation");
 #endif
     info.deviceExtensions.insert(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    // dedicated allocations
+    info.deviceExtensions.insert("VK_KHR_get_memory_requirements2");
+    info.deviceExtensions.insert("VK_KHR_dedicated_allocation");
+
+
     window.collectInstanceExtensions(info.instanceExtensions);
 }
 
@@ -136,6 +147,18 @@ void EvDevice::createLogicalDevice() {
 
 }
 
+void EvDevice::createAllocator() {
+    VmaAllocatorCreateInfo allocatorInfo {
+        .flags = VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT,
+        .physicalDevice = vkPhysicalDevice,
+        .device = vkDevice,
+        .instance = vkInstance,
+        .vulkanApiVersion = VK_API_VERSION_1_2,
+    };
+
+    vmaCreateAllocator(&allocatorInfo, &vmaAllocator);
+}
+
 void EvDevice::createCommandPool() {
     VkCommandPoolCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -168,7 +191,7 @@ bool EvDevice::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
 }
 
 void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-                              VkMemoryPropertyFlags properties, VkImage* image, VkDeviceMemory* memory) {
+                              VkMemoryPropertyFlags properties, VkImage* image, VmaAllocation* memory) {
 
     VkImageCreateInfo imageInfo {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -188,19 +211,15 @@ void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTili
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    vkCheck(vkCreateImage(vkDevice, &imageInfo, nullptr, image));
-
-    VkMemoryRequirements memoryRequirements;
-    vkGetImageMemoryRequirements(vkDevice, *image, &memoryRequirements);
-
-    VkMemoryAllocateInfo allocInfo {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = memoryRequirements.size,
-        .memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, properties),
+    VmaAllocationCreateInfo allocInfo {
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
     };
 
-    vkCheck(vkAllocateMemory(vkDevice, &allocInfo, nullptr, memory));
-    vkCheck(vkBindImageMemory(vkDevice, *image, *memory, 0));
+    VmaAllocationInfo allocInfoExt {
+        .memoryType = properties
+    };
+
+    vkCheck(vmaCreateImage(vmaAllocator, &imageInfo, &allocInfo, image, memory, &allocInfoExt));
 }
 
 void EvDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView) {
@@ -251,7 +270,7 @@ VkShaderModule EvDevice::createShaderModule(const char* filepath) const {
 }
 
 
-void EvDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *bufferMemory) {
+void EvDevice::createHostBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer *buffer, VmaAllocation *bufferMemory) {
     VkBufferCreateInfo bufferInfo {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = size,
@@ -259,35 +278,36 @@ void EvDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemor
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
 
-    vkCheck(vkCreateBuffer(vkDevice, &bufferInfo, nullptr, buffer));
-
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(vkDevice, *buffer, &memRequirements);
-
-    VkMemoryAllocateInfo allocInfo {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = memRequirements.size,
-        .memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties),
+    VmaAllocationCreateInfo allocInfo {
+        .usage = VMA_MEMORY_USAGE_CPU_ONLY,
     };
 
-    vkCheck(vkAllocateMemory(vkDevice, &allocInfo, nullptr, bufferMemory));
-    vkCheck(vkBindBufferMemory(vkDevice, *buffer, *bufferMemory, 0));
+    vkCheck(vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, buffer, bufferMemory, nullptr));
 }
 
-void EvDevice::createDeviceBuffer(VkDeviceSize size, void* src, VkBufferUsageFlags usage, VkBuffer *buffer, VkDeviceMemory *bufferMemory) {
+void EvDevice::createDeviceBuffer(VkDeviceSize size, void* src, VkBufferUsageFlags usage, VkBuffer *buffer, VmaAllocation *bufferMemory) {
     VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
+    VmaAllocation stagingBufferMemory;
+    createHostBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | usage, &stagingBuffer, &stagingBufferMemory);
     void* data;
-    vkCheck(vkMapMemory(vkDevice, stagingBufferMemory, 0, size, 0, &data));
+    vkCheck(vmaMapMemory(vmaAllocator, stagingBufferMemory, &data));
     memcpy(data, src, static_cast<size_t>(size));
-    vkUnmapMemory(vkDevice, stagingBufferMemory);
+    vmaUnmapMemory(vmaAllocator, stagingBufferMemory);
 
-    createBuffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, bufferMemory);
+    VkBufferCreateInfo bufferInfo {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = size,
+        .usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+
+    VmaAllocationCreateInfo allocInfo {
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+    };
+
+    vkCheck(vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, buffer, bufferMemory, nullptr));
     copyBuffer(*buffer, stagingBuffer, size);
-
-    vkDestroyBuffer(vkDevice, stagingBuffer, nullptr);
-    vkFreeMemory(vkDevice, stagingBufferMemory, nullptr);
+    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingBufferMemory);
 }
 
 VkCommandBuffer EvDevice::beginSingleTimeCommands() {
@@ -331,6 +351,7 @@ void EvDevice::copyBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize s
     vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
     endSingleTimeCommands(commandBuffer);
 }
+
 
 
 

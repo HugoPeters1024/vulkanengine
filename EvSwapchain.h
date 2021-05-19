@@ -30,7 +30,7 @@ public:
     VkSwapchainKHR vkSwapchain;
     std::vector<VkImage> vkImages;
     VkImage vkDepthImage;
-    VkDeviceMemory vkDepthImageMemory;
+    VmaAllocation vkDepthImageMemory;
     std::vector<VkImageView> vkImageViews;
     VkImageView vkDepthImageView;
     std::vector<VkFramebuffer> vkFramebuffers;
