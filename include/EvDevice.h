@@ -3,10 +3,10 @@
 #include <vulkan/vulkan.h>
 #include <set>
 
-#include "utils.h"
-#include "UtilsPhysicalDevice.h"
+#include "utils.hpp"
+#include "UtilsPhysicalDevice.hpp"
 #include "EvWindow.h"
-#include "vk_mem_alloc.h"
+#include "vk_mem_alloc.hpp"
 
 struct EvDeviceInfo {
     std::set<const char*> validationLayers;
@@ -46,9 +46,11 @@ public:
     EvDevice(EvDeviceInfo info, EvWindow &window);
     ~EvDevice();
 
+    VkFormat findSupportedFormat ( const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+    VkFormat findDepthFormat() const;
+
     void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage* image, VmaAllocation* memory);
     void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView);
-    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
     SwapchainSupportDetails getSwapchainSupportDetails() const;
     VkShaderModule createShaderModule(const char* filepath) const;
     void createHostBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buffer, VmaAllocation* bufferMemory);
@@ -56,5 +58,4 @@ public:
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
     void copyBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize size);
-
 };

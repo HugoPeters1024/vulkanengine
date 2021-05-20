@@ -3,10 +3,10 @@
 #include <stdexcept>
 #include <cassert>
 #include <utility>
-#include "UtilsPhysicalDevice.h"
+#include "UtilsPhysicalDevice.hpp"
 
 #define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.h"
+#include "vk_mem_alloc.hpp"
 
 EvDevice::EvDevice(EvDeviceInfo info, EvWindow &window) : window(window), info(std::move(info)) {
     finalizeInfo();
@@ -34,7 +34,10 @@ EvDevice::~EvDevice() {
 void EvDevice::finalizeInfo() {
 #ifndef NDEBUG
     info.validationLayers.insert("VK_LAYER_KHRONOS_validation");
+#else
+    printf("Release build, validation layers disabled.\n");
 #endif
+
     info.deviceExtensions.insert(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     // dedicated allocations
     info.deviceExtensions.insert("VK_KHR_get_memory_requirements2");
@@ -241,16 +244,6 @@ void EvDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlag
     vkCheck(vkCreateImageView(vkDevice, &viewInfo, nullptr, imageView));
 }
 
-uint32_t EvDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
-    for(uint32_t i=0; i<vkPhysicalDeviceMemoryProperties.memoryTypeCount; i++) {
-        if ((typeFilter & (1 << i))  && (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-            return i;
-        }
-    }
-
-    throw std::runtime_error("Could not find suitable memory type");
-}
-
 SwapchainSupportDetails EvDevice::getSwapchainSupportDetails() const {
     return querySwapchainSupport(vkPhysicalDevice, vkSurface);
 }
@@ -350,6 +343,30 @@ void EvDevice::copyBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize s
     };
     vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
     endSingleTimeCommands(commandBuffer);
+}
+
+VkFormat EvDevice::findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const
+{
+    for (const auto& format : candidates) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(vkPhysicalDevice, format, &props);
+
+        if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+            return format;
+
+        if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+            return format;
+    }
+
+    throw std::runtime_error("Failed to find supported format");
+}
+
+VkFormat EvDevice::findDepthFormat() const {
+    return findSupportedFormat(
+            {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+    );
 }
 
 

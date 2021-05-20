@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#include "utils.h"
+#include "utils.hpp"
 
 EvRastPipeline::EvRastPipeline(const EvDevice &device, const EvRastPipelineInfo &info)
                                : device(device) {

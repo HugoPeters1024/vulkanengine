@@ -1,5 +1,5 @@
 project(ecs CXX)
-include_directories(${PROJECT_SOURCE_DIR}/ecs/)
-file(GLOB src CONFIGURE_DEPENDS "*.h" "*.hpp" "*.cpp")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/ecs/)
+file(GLOB src CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/ecs/*.h)
 add_library(ecs ${src})
 set_target_properties(ecs PROPERTIES LINKER_LANGUAGE CXX)

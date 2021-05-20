@@ -60,7 +60,7 @@ inline std::vector<char> readFile(const std::string& filepath) {
     size_t fileSize = static_cast<size_t>(file.tellg());
     std::vector<char> buffer(fileSize);
     file.seekg(0);
-    file.read(buffer.data(), fileSize);
+    file.read(buffer.data(), static_cast<long>(fileSize));
     file.close();
     return buffer;
 }

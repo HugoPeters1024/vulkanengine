@@ -2,31 +2,29 @@ cmake_minimum_required(VERSION 3.19)
 project(vulkanray)
 
 set(CMAKE_CXX_STANDARD 20)
-
-file(GLOB src CONFIGURE_DEPENDS "*.h" "*.hpp" "*.cpp")
-
-
+file(GLOB src CONFIGURE_DEPENDS "src/*.cpp")
 
 macro(shader)
     add_custom_command(
-            OUTPUT shaders_bin/${ARGV0}.spv
-            DEPENDS shaders/${ARGV0}
+            OUTPUT glsl_shaders_bin/${ARGV0}.spv
+            DEPENDS glsl_shaders/${ARGV0}
             COMMAND /usr/bin/glslc
-            ARGS ${CMAKE_SOURCE_DIR}/shaders/${ARGV0} -o ${CMAKE_SOURCE_DIR}/shaders_bin/${ARGV0}.spv
+            ARGS ${CMAKE_SOURCE_DIR}/glsl_shaders/${ARGV0} -o ${CMAKE_SOURCE_DIR}/glsl_shaders_bin/${ARGV0}.spv
             COMMENT building shaders
             VERBATIM)
-    SET(src ${src} shaders_bin/${ARGV0}.spv)
+    SET(src ${src} glsl_shaders_bin/${ARGV0}.spv)
 endmacro()
-
 
 shader("shader.vert")
 shader("shader.frag")
 
-
-add_executable(vulkanray ${src})
+add_executable(vulkanray main.cpp ${src})
+set_target_properties(vulkanray PROPERTIES LINKER_LANGUAGE CXX)
+target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/include/)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/ecs)
 link_directories(${CMAKE_SOURCE_DIR}/ecs)
+target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/ecs/include/)
 target_link_libraries(vulkanray ecs)
 
 find_package(glm REQUIRED)

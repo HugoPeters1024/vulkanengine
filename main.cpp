@@ -1,7 +1,7 @@
 #include <iostream>
 #include "EvWindow.h"
 #include "EvDevice.h"
-#include "App.h"
+#include "include/App.h"
 
 int main() {
     App app{};
