@@ -12,7 +12,7 @@ void App::Run() {
         window.processEvents();
         renderSystem->Render();
         auto& transform = ecsCoordinator.GetComponent<TransformComponent>(triangle);
-        transform.transform = glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(0,0,0.5f)), time, glm::vec3(0,1,0));
+        transform.yrot += 0.01f;
         time += 0.01f;
     }
 
@@ -23,12 +23,7 @@ void App::Run() {
 
 
 void App::loadModel() {
-    std::vector<Vertex> vertices = {
-            {{0.0f, -0.5f, 0.0f}},
-            {{-0.5f, 0.5f, 0.0f}},
-            {{0.5f, 0.5f, 0.0f}},
-    };
-    model = std::make_unique<EvModel>(device, vertices);
+    model = std::make_unique<EvModel>(device, "cube.obj");
 }
 
 void App::createECS() {
@@ -38,7 +33,7 @@ void App::createECS() {
 
     triangle = ecsCoordinator.CreateEntity();
     ecsCoordinator.AddComponent(triangle, ModelComponent{model.get()});
-    ecsCoordinator.AddComponent(triangle, TransformComponent{glm::mat4(1.0f)});
+    ecsCoordinator.AddComponent(triangle, TransformComponent{glm::vec3(0,0,10), 0.0f});
 }
 
 

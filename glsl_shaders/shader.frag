@@ -1,6 +1,4 @@
 #version 460
-#define IN_SHADER
-#include "../ShaderTypes.h"
 
 layout(location = 0) out vec4 outColor;
 

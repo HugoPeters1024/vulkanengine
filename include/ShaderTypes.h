@@ -6,9 +6,10 @@
 using namespace glm;
 #endif
 
-struct Lol
+struct PushConstant
 {
-    mat4 transform;
+    mat4 camera;
+    mat4 mvp;
 };
 
 #endif

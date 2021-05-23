@@ -1,5 +1,6 @@
 #include "RenderSystem.h"
 #include "ShaderTypes.h"
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 
@@ -38,7 +39,7 @@ void RenderSystem::createPipelineLayout() {
     VkPushConstantRange pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             .offset = 0,
-            .size = sizeof(Lol),
+            .size = sizeof(PushConstant),
     };
 
     VkPipelineLayoutCreateInfo createInfo {
@@ -53,7 +54,7 @@ void RenderSystem::createPipelineLayout() {
 }
 
 void RenderSystem::createPipeline() {
-    defaultRastPipelineInfo(vertShaderModule, fragShaderModule, &pipelineInfo);
+    EvRastPipeline::defaultRastPipelineInfo(vertShaderModule, fragShaderModule, &pipelineInfo);
     pipelineInfo.renderPass = swapchain->vkRenderPass;
     pipelineInfo.layout = vkPipelineLayout;
 
@@ -118,12 +119,21 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     rastPipeline->bind(commandBuffer);
 
+    auto viewMatrix = glm::lookAt(glm::vec3(0,0,0), glm::vec3(0,0,1), glm::vec3(0,1,0));
+    auto projectionMatrix = glm::perspective(glm::radians(90.0f), 640.0f / 480.0f, 0.1f, 100.0f);
+
+    PushConstant push{
+        .camera = projectionMatrix * viewMatrix,
+    };
+
     for (const auto& entity : m_entities) {
         auto& modelComp = m_coordinator->GetComponent<ModelComponent>(entity);
         auto& transformComp = m_coordinator->GetComponent<TransformComponent>(entity);
-        Lol push{
-                .transform = transformComp.transform,
-        };
+
+        auto translation = glm::translate(glm::mat4(1.0f), transformComp.position);
+        auto rotation = glm::rotate(glm::mat4(1.0f), transformComp.yrot, glm::vec3(0,1,0));
+
+        push.mvp = translation * rotation;
         vkCmdPushConstants(
                 commandBuffer,
                 vkPipelineLayout,
@@ -134,7 +144,6 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
         modelComp.model->bind(commandBuffer);
         modelComp.model->draw(commandBuffer);
     }
-
 
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
     vkCheck(vkEndCommandBuffer(commandBuffers[imageIndex]));
