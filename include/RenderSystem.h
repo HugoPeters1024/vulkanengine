@@ -16,7 +16,7 @@ struct ModelComponent {
 
 struct TransformComponent {
     glm::vec3 position;
-    float yrot;
+    glm::vec3 rotation;
 };
 
 class RenderSystem : public System

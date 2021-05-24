@@ -12,7 +12,8 @@ void App::Run() {
         window.processEvents();
         renderSystem->Render();
         auto& transform = ecsCoordinator.GetComponent<TransformComponent>(triangle);
-        transform.yrot += 0.01f;
+        transform.rotation.y += 0.01f;
+        transform.rotation.z += 0.0133f;
         time += 0.01f;
     }
 
@@ -33,7 +34,7 @@ void App::createECS() {
 
     triangle = ecsCoordinator.CreateEntity();
     ecsCoordinator.AddComponent(triangle, ModelComponent{model.get()});
-    ecsCoordinator.AddComponent(triangle, TransformComponent{glm::vec3(0,0,10), 0.0f});
+    ecsCoordinator.AddComponent(triangle, TransformComponent{glm::vec3(0,0,10), glm::vec3(0.0f)});
 }
 
 

@@ -38,10 +38,16 @@ std::vector<Vertex> EvModel::loadModel(const std::string& filename) {
             assert(shape.mesh.num_face_vertices[f] == 3 && "Plz only triangles for now");
             for(size_t v = 0; v<3; v++) {
                 const auto& idx = shape.mesh.indices[f * 3 + v];
+
                 float vx = attrib.vertices[3 * idx.vertex_index + 0];
                 float vy = attrib.vertices[3 * idx.vertex_index + 1];
                 float vz = attrib.vertices[3 * idx.vertex_index + 2];
-                ret.push_back(Vertex { glm::vec3(vx, vy, vz) });
+
+                float nx = attrib.normals[3 * idx.normal_index + 0];
+                float ny = attrib.normals[3 * idx.normal_index + 1];
+                float nz = attrib.normals[3 * idx.normal_index + 2];
+
+                ret.push_back(Vertex { glm::vec3(vx, vy, vz), glm::vec3(nx, ny, nz) });
             }
         }
     }
@@ -79,12 +85,18 @@ std::vector<VkVertexInputBindingDescription> Vertex::getBindingDescriptions() {
 }
 
 std::vector<VkVertexInputAttributeDescription> Vertex::getAttributeDescriptions() {
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions(1);
-    attributeDescriptions[0] = VkVertexInputAttributeDescription {
-        .location = 0,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = 0,
+    return {
+        VkVertexInputAttributeDescription {
+                .location = 0,
+                .binding = 0,
+                .format = VK_FORMAT_R32G32B32_SFLOAT,
+                .offset = offsetof(Vertex, position),
+        },
+        VkVertexInputAttributeDescription {
+                .location = 1,
+                .binding = 0,
+                .format = VK_FORMAT_R32G32B32_SFLOAT,
+                .offset = offsetof(Vertex, normal),
+        },
     };
-    return attributeDescriptions;
 }

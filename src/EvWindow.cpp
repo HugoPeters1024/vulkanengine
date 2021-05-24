@@ -59,5 +59,9 @@ void EvWindow::onResizeCallback(GLFWwindow* glfwWindow, int width, int height) {
     printf("window was resized to (%i, %i)\n", width, height);
 }
 
+float EvWindow::getAspectRatio() const {
+    return static_cast<float>(width) / static_cast<float>(height);
+}
+
 
 

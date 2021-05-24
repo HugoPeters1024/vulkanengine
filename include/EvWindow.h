@@ -22,6 +22,7 @@ public:
     void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface) const;
     void collectInstanceExtensions(std::set<const char*>& instanceExtensions) const;
     void getFramebufferSize(int* width, int* height) const;
+    float getAspectRatio() const;
 
     bool shouldClose() const;
     void processEvents() const;

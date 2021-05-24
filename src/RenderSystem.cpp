@@ -120,7 +120,7 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
     rastPipeline->bind(commandBuffer);
 
     auto viewMatrix = glm::lookAt(glm::vec3(0,0,0), glm::vec3(0,0,1), glm::vec3(0,1,0));
-    auto projectionMatrix = glm::perspective(glm::radians(90.0f), 640.0f / 480.0f, 0.1f, 100.0f);
+    auto projectionMatrix = glm::perspective(glm::radians(90.0f), device.window.getAspectRatio(), 0.1f, 100.0f);
 
     PushConstant push{
         .camera = projectionMatrix * viewMatrix,
@@ -131,9 +131,11 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
         auto& transformComp = m_coordinator->GetComponent<TransformComponent>(entity);
 
         auto translation = glm::translate(glm::mat4(1.0f), transformComp.position);
-        auto rotation = glm::rotate(glm::mat4(1.0f), transformComp.yrot, glm::vec3(0,1,0));
+        auto rotationx = glm::rotate(glm::mat4(1.0f), transformComp.rotation.x, glm::vec3(1,0,0));
+        auto rotationy = glm::rotate(glm::mat4(1.0f), transformComp.rotation.y, glm::vec3(0,1,0));
+        auto rotationz = glm::rotate(glm::mat4(1.0f), transformComp.rotation.z, glm::vec3(0,0,1));
 
-        push.mvp = translation * rotation;
+        push.mvp = translation * rotationx * rotationy * rotationz;
         vkCmdPushConstants(
                 commandBuffer,
                 vkPipelineLayout,
