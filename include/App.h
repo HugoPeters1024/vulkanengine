@@ -8,6 +8,7 @@
 
 #include "ecs/ecs.h"
 #include "RenderSystem.h"
+#include "InputSystem.h"
 
 #pragma once
 
@@ -21,6 +22,7 @@ class App {
 
     EcsCoordinator ecsCoordinator;
     std::shared_ptr<RenderSystem> renderSystem;
+    std::shared_ptr<InputSystem> inputSystem;
 
     void createECS();
     void loadModel();
