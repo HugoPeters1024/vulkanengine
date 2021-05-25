@@ -193,8 +193,7 @@ bool EvDevice::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
     return deviceFeatures.samplerAnisotropy;
 }
 
-void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-                              VkMemoryPropertyFlags properties, VkImage* image, VmaAllocation* memory) {
+void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage* image, VmaAllocation* memory) {
 
     VkImageCreateInfo imageInfo {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -218,11 +217,7 @@ void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTili
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
     };
 
-    VmaAllocationInfo allocInfoExt {
-        .memoryType = properties
-    };
-
-    vkCheck(vmaCreateImage(vmaAllocator, &imageInfo, &allocInfo, image, memory, &allocInfoExt));
+    vkCheck(vmaCreateImage(vmaAllocator, &imageInfo, &allocInfo, image, memory, nullptr));
 }
 
 void EvDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView) {

@@ -108,12 +108,12 @@ void EvSwapchain::createImageViews() {
 
 void EvSwapchain::createDepthResources() {
     VkFormat depthFormat = device.findDepthFormat();
-    device.createImage(extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vkDepthImage, &vkDepthImageMemory);
+    device.createImage(extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, &vkDepthImage, &vkDepthImageMemory);
     device.createImageView(vkDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, &vkDepthImageView);
 }
 
 void EvSwapchain::createFramebuffers() {
-    vkFramebuffers.resize(vkImageViews.size());
+    vkFramebuffers.resize(vkImages.size());
 
     for(uint i=0; i < vkFramebuffers.size(); i++) {
         std::array<VkImageView, 2> attachments {

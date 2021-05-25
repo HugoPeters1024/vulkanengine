@@ -49,7 +49,7 @@ public:
     VkFormat findSupportedFormat ( const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
     VkFormat findDepthFormat() const;
 
-    void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage* image, VmaAllocation* memory);
+    void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage* image, VmaAllocation* memory);
     void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView);
     SwapchainSupportDetails getSwapchainSupportDetails() const;
     VkShaderModule createShaderModule(const char* filepath) const;

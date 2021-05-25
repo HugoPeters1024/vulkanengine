@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 project(vulkanray)
 
 set(CMAKE_CXX_STANDARD 20)
-file(GLOB src CONFIGURE_DEPENDS "src/*.cpp")
+file(GLOB src CONFIGURE_DEPENDS "include/*.h" "src/*.cpp")
 
 macro(shader)
     add_custom_command(
