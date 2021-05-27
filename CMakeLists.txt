@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 project(vulkanray)
 
 set(CMAKE_CXX_STANDARD 20)
-file(GLOB src CONFIGURE_DEPENDS "include/*.h" "src/*.cpp")
+file(GLOB src CONFIGURE_DEPENDS "include/*.h" "include/*.hpp" "src/*.cpp")
 
 macro(shader)
     add_custom_command(
@@ -21,6 +21,7 @@ shader("shader.frag")
 add_executable(vulkanray main.cpp ${src})
 set_target_properties(vulkanray PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/include/)
+target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/external)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/ecs)
 link_directories(${CMAKE_SOURCE_DIR}/ecs)

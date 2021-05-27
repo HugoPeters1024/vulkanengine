@@ -21,19 +21,22 @@ struct EvRastPipelineInfo : NoCopy {
     VkRenderPass renderPass = nullptr;
     VkPipelineLayout layout = nullptr;
     uint subpass = 0;
+    uint swapchainImages = 0;
 };
 
 class EvRastPipeline : NoCopy {
 private:
     const EvDevice& device;
     VkPipeline vkPipeline;
+    VkDescriptorPool vkDescriptorPool;
 
     void createGraphicsPipeline(const EvRastPipelineInfo& info);
+    void createDescriptorPool(const EvRastPipelineInfo &info);
 
 public:
     EvRastPipeline(const EvDevice& device, const EvRastPipelineInfo &info);
     ~EvRastPipeline();
 
-    static void defaultRastPipelineInfo(VkShaderModule vertShaderModule, VkShaderModule fragShaderModule, EvRastPipelineInfo* info);
+    static void defaultRastPipelineInfo(VkShaderModule vertShaderModule, VkShaderModule fragShaderModule, VkSampleCountFlagBits msaaSamples, EvRastPipelineInfo* info);
     void bind(VkCommandBuffer commandBuffer) const;
 };

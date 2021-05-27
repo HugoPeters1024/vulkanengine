@@ -6,7 +6,7 @@
 #include "UtilsPhysicalDevice.hpp"
 
 #define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.hpp"
+#include <vk_mem_alloc.hpp>
 
 EvDevice::EvDevice(EvDeviceInfo info, EvWindow &window) : window(window), info(std::move(info)) {
     finalizeInfo();
@@ -103,6 +103,16 @@ void EvDevice::pickPhysicalDevice() {
     if (!isDeviceSuitable(vkPhysicalDevice)) {
         throw std::runtime_error("Selected device does not support requirements");
     }
+
+    VkSampleCountFlags sampleFlags = vkPhysicalDeviceProperties.limits.framebufferColorSampleCounts
+                                   & vkPhysicalDeviceProperties.limits.framebufferDepthSampleCounts;
+
+    for (VkSampleCountFlagBits sampleCountBit = VK_SAMPLE_COUNT_1_BIT
+        ; sampleCountBit <= VK_SAMPLE_COUNT_64_BIT
+        ; sampleCountBit = static_cast<VkSampleCountFlagBits>( sampleCountBit << 1))
+    {
+        if (sampleFlags & sampleCountBit) { msaaSamples = sampleCountBit; }
+    }
 }
 
 void EvDevice::createLogicalDevice() {
@@ -193,7 +203,8 @@ bool EvDevice::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
     return deviceFeatures.samplerAnisotropy;
 }
 
-void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage* image, VmaAllocation* memory) {
+void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                           VkSampleCountFlagBits numSamples, VkImage *image, VmaAllocation *memory) {
 
     VkImageCreateInfo imageInfo {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -206,7 +217,7 @@ void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTili
         },
         .mipLevels = 1,
         .arrayLayers = 1,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .samples = numSamples,
         .tiling = tiling,
         .usage = usage,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,

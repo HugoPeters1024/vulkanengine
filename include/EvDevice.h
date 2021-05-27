@@ -6,7 +6,7 @@
 #include "utils.hpp"
 #include "UtilsPhysicalDevice.hpp"
 #include "EvWindow.h"
-#include "vk_mem_alloc.hpp"
+#include <vk_mem_alloc.hpp>
 
 struct EvDeviceInfo {
     std::set<const char*> validationLayers;
@@ -34,6 +34,8 @@ public:
     VkPhysicalDeviceProperties vkPhysicalDeviceProperties;
     VkPhysicalDeviceFeatures vkPhysicalDeviceFeatures;
     VkPhysicalDeviceMemoryProperties vkPhysicalDeviceMemoryProperties;
+    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+
     QueueFamilyIndices queueFamilyIndices;
     VkDevice vkDevice;
     VmaAllocator vmaAllocator;
@@ -49,7 +51,8 @@ public:
     VkFormat findSupportedFormat ( const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
     VkFormat findDepthFormat() const;
 
-    void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage* image, VmaAllocation* memory);
+    void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                     VkSampleCountFlagBits numSamples, VkImage *image, VmaAllocation *memory);
     void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView);
     SwapchainSupportDetails getSwapchainSupportDetails() const;
     VkShaderModule createShaderModule(const char* filepath) const;

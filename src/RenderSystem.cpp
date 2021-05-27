@@ -1,8 +1,4 @@
 #include "RenderSystem.h"
-#include "ShaderTypes.h"
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/ext.hpp>
 
 RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     createShaderModules();
@@ -54,9 +50,10 @@ void RenderSystem::createPipelineLayout() {
 }
 
 void RenderSystem::createPipeline() {
-    EvRastPipeline::defaultRastPipelineInfo(vertShaderModule, fragShaderModule, &pipelineInfo);
+    EvRastPipeline::defaultRastPipelineInfo(vertShaderModule, fragShaderModule, device.msaaSamples, &pipelineInfo);
     pipelineInfo.renderPass = swapchain->vkRenderPass;
     pipelineInfo.layout = vkPipelineLayout;
+    pipelineInfo.swapchainImages = static_cast<uint32>(swapchain->vkImages.size());
 
     rastPipeline = std::make_unique<EvRastPipeline>(device, pipelineInfo);
 }
@@ -85,11 +82,14 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
 
     vkCheck(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
-    std::array<VkClearValue, 2> clearValues {};
+    std::array<VkClearValue, 3> clearValues {};
     clearValues[0] = {
             .color = {0.0f, 0.1f, 0.1f, 1.0f},
     };
     clearValues[1] = {
+            .color = {0.0f, 0.1f, 0.1f, 1.0f},
+    };
+    clearValues[2] = {
             .depthStencil = {1.0f, 0},
     };
 

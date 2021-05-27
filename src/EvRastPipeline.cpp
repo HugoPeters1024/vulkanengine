@@ -7,11 +7,15 @@
 EvRastPipeline::EvRastPipeline(const EvDevice &device, const EvRastPipelineInfo &info)
                                : device(device) {
     createGraphicsPipeline(info);
+    createDescriptorPool(info);
 }
 
 EvRastPipeline::~EvRastPipeline() {
     printf("Destroying the pipeline\n");
     vkDestroyPipeline(device.vkDevice, vkPipeline, nullptr);
+
+    printf("Destroying descriptor pool\n");
+    vkDestroyDescriptorPool(device.vkDevice, vkDescriptorPool, nullptr);
 }
 
 
@@ -77,7 +81,7 @@ void EvRastPipeline::bind(VkCommandBuffer commandBuffer) const {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
 }
 
-void EvRastPipeline::defaultRastPipelineInfo(VkShaderModule vertShaderModule, VkShaderModule fragShaderModule,
+void EvRastPipeline::defaultRastPipelineInfo(VkShaderModule vertShaderModule, VkShaderModule fragShaderModule, VkSampleCountFlagBits msaaSamples,
                                              EvRastPipelineInfo *info)
 {
     VkPipelineViewportStateCreateInfo viewportInfo {
@@ -99,15 +103,15 @@ void EvRastPipeline::defaultRastPipelineInfo(VkShaderModule vertShaderModule, Vk
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
             .polygonMode = VK_POLYGON_MODE_FILL,
-            .cullMode = VK_CULL_MODE_NONE,
-            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .cullMode = VK_CULL_MODE_BACK_BIT,
+            .frontFace = VK_FRONT_FACE_CLOCKWISE,
             .depthBiasEnable = VK_FALSE,
             .lineWidth = 1.0f,
     };
 
     VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+            .rasterizationSamples = msaaSamples,
             .sampleShadingEnable = VK_FALSE,
             .minSampleShading = 1.0f,
             .pSampleMask = nullptr,
@@ -154,5 +158,22 @@ void EvRastPipeline::defaultRastPipelineInfo(VkShaderModule vertShaderModule, Vk
     info->multisampleStateCreateInfo = multisampleStateCreateInfo;
     info->blendAttachmentState = blendAttachmentState;
     info->depthStencilStateCreateInfo = depthStencilStateCreateInfo;
+}
+
+void EvRastPipeline::createDescriptorPool(const EvRastPipelineInfo &info) {
+    assert(info.swapchainImages > 0);
+    VkDescriptorPoolSize poolSize {
+        .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = info.swapchainImages,
+    };
+
+    VkDescriptorPoolCreateInfo poolInfo {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = info.swapchainImages,
+        .poolSizeCount = 1,
+        .pPoolSizes = &poolSize,
+    };
+
+    vkCheck(vkCreateDescriptorPool(device.vkDevice, &poolInfo, nullptr, &vkDescriptorPool));
 }
 

@@ -33,6 +33,9 @@ public:
     VmaAllocation vkDepthImageMemory;
     std::vector<VkImageView> vkImageViews;
     VkImageView vkDepthImageView;
+    VkImage colorImage;
+    VmaAllocation colorImageMemory;
+    VkImageView colorImageView;
     std::vector<VkFramebuffer> vkFramebuffers;
     VkSurfaceFormatKHR surfaceFormat;
     VkExtent2D extent;
@@ -45,4 +48,6 @@ public:
     VkResult acquireNextSwapchainImage(uint32_t* imageIndex);
     void waitForImageReady(uint32_t imageIndex);
     VkResult presentCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+    void createColorResources();
 };

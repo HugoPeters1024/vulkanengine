@@ -1,6 +1,4 @@
 #include "App.h"
-#include <glm/glm.hpp>
-#include <glm/ext.hpp>
 
 App::App() {
     loadModel();
@@ -44,6 +42,8 @@ void App::createECS() {
             auto &transform = ecsCoordinator.GetComponent<TransformComponent>(triangle);
             if (inputHelper.isDown(GLFW_KEY_RIGHT)) transform.position.x -= 0.05f;
             if (inputHelper.isDown(GLFW_KEY_LEFT)) transform.position.x += 0.05f;
+            if (inputHelper.isDown(GLFW_KEY_UP)) transform.position.z += 0.05f;
+            if (inputHelper.isDown(GLFW_KEY_DOWN)) transform.position.z -= 0.05f;
         },
     });
 }

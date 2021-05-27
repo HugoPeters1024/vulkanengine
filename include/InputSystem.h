@@ -2,7 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <memory>
 #include <functional>
-#include "ecs/ecs.h"
+#include <ecs/ecs.h>
 #include "EvInputHelper.h"
 
 struct InputComponent {

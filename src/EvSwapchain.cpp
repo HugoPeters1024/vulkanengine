@@ -15,6 +15,7 @@ EvSwapchain::EvSwapchain(EvDevice &device, std::shared_ptr<EvSwapchain> previous
 void EvSwapchain::init() {
     createSwapchain();
     createImageViews();
+    createColorResources();
     createDepthResources();
     createRenderpass();
     createFramebuffers();
@@ -36,10 +37,12 @@ EvSwapchain::~EvSwapchain() {
     for(const auto& view : vkImageViews)
         vkDestroyImageView(device.vkDevice, view, nullptr);
     vkDestroyImageView(device.vkDevice, vkDepthImageView, nullptr);
+    vkDestroyImageView(device.vkDevice, colorImageView, nullptr);
 
     printf("Destroying images\n");
     // main images are managed by the swap chain
     vmaDestroyImage(device.vmaAllocator, vkDepthImage, vkDepthImageMemory);
+    vmaDestroyImage(device.vmaAllocator, colorImage, colorImageMemory);
 
     printf("Destroying frame buffers\n");
     for(const auto& framebuffer : vkFramebuffers) {
@@ -106,45 +109,31 @@ void EvSwapchain::createImageViews() {
     }
 }
 
+void EvSwapchain::createColorResources() {
+    VkFormat colorFormat = surfaceFormat.format;
+    device.createImage(extent.width, extent.height, colorFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, device.msaaSamples, &colorImage, &colorImageMemory);
+    device.createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, &colorImageView);
+}
+
 void EvSwapchain::createDepthResources() {
     VkFormat depthFormat = device.findDepthFormat();
-    device.createImage(extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, &vkDepthImage, &vkDepthImageMemory);
+    device.createImage(extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, device.msaaSamples, &vkDepthImage,
+                       &vkDepthImageMemory);
     device.createImageView(vkDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, &vkDepthImageView);
 }
 
-void EvSwapchain::createFramebuffers() {
-    vkFramebuffers.resize(vkImages.size());
-
-    for(uint i=0; i < vkFramebuffers.size(); i++) {
-        std::array<VkImageView, 2> attachments {
-            vkImageViews[i],
-            vkDepthImageView,
-        };
-
-        VkFramebufferCreateInfo createInfo {
-            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-            .renderPass = vkRenderPass,
-            .attachmentCount = static_cast<uint32_t>(attachments.size()),
-            .pAttachments = attachments.data(),
-            .width = extent.width,
-            .height = extent.height,
-            .layers = 1,
-        };
-
-        vkCheck(vkCreateFramebuffer(device.vkDevice, &createInfo, nullptr, &vkFramebuffers[i]));
-    }
-}
 
 void EvSwapchain::createRenderpass() {
     VkAttachmentDescription colorAttachment {
         .format = surfaceFormat.format,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .samples = device.msaaSamples,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     };
 
     VkAttachmentReference colorAttachmentRef {
@@ -152,9 +141,25 @@ void EvSwapchain::createRenderpass() {
         .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     };
 
+    VkAttachmentDescription colorAttachmentResolve {
+            .format = surfaceFormat.format,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    };
+
+    VkAttachmentReference colorAttachmentResolveRef {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    };
+
     VkAttachmentDescription depthAttachment {
         .format = device.findDepthFormat(),
-        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .samples = device.msaaSamples,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
@@ -164,7 +169,7 @@ void EvSwapchain::createRenderpass() {
     };
 
     VkAttachmentReference depthAttachmentRef {
-        .attachment = 1,
+        .attachment = 2,
         .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
     };
 
@@ -172,7 +177,8 @@ void EvSwapchain::createRenderpass() {
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
         .colorAttachmentCount = 1,
         .pColorAttachments = &colorAttachmentRef,
-        .pDepthStencilAttachment = &depthAttachmentRef
+        .pResolveAttachments = &colorAttachmentResolveRef,
+        .pDepthStencilAttachment = &depthAttachmentRef,
     };
 
     VkSubpassDependency dependency {
@@ -184,7 +190,7 @@ void EvSwapchain::createRenderpass() {
         .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT + VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
     };
 
-    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+    std::array<VkAttachmentDescription, 3> attachments = {colorAttachment, colorAttachmentResolve, depthAttachment};
     VkRenderPassCreateInfo createInfo {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
             .attachmentCount = static_cast<uint32_t>(attachments.size()),
@@ -196,6 +202,30 @@ void EvSwapchain::createRenderpass() {
     };
 
     vkCheck(vkCreateRenderPass(device.vkDevice, &createInfo, nullptr, &vkRenderPass));
+}
+
+void EvSwapchain::createFramebuffers() {
+    vkFramebuffers.resize(vkImages.size());
+
+    for(uint i=0; i < vkFramebuffers.size(); i++) {
+        std::array<VkImageView, 3> attachments {
+                colorImageView,
+                vkImageViews[i],
+                vkDepthImageView,
+        };
+
+        VkFramebufferCreateInfo createInfo {
+                .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                .renderPass = vkRenderPass,
+                .attachmentCount = static_cast<uint32_t>(attachments.size()),
+                .pAttachments = attachments.data(),
+                .width = extent.width,
+                .height = extent.height,
+                .layers = 1,
+        };
+
+        vkCheck(vkCreateFramebuffer(device.vkDevice, &createInfo, nullptr, &vkFramebuffers[i]));
+    }
 }
 
 void EvSwapchain::createSyncObjects() {
@@ -306,6 +336,7 @@ VkResult EvSwapchain::presentCommandBuffer(VkCommandBuffer commandBuffer, uint32
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     return vkQueuePresentKHR(device.presentQueue, &presentInfo);
 }
+
 
 
 
