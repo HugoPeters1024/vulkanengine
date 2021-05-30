@@ -19,8 +19,8 @@ RenderSystem::~RenderSystem() {
 
 
 void RenderSystem::createShaderModules() {
-    vertShaderModule = device.createShaderModule("glsl_shaders_bin/shader.vert.spv");
-    fragShaderModule = device.createShaderModule("glsl_shaders_bin/shader.frag.spv");
+    vertShaderModule = device.createShaderModule("assets/shaders_bin/shader.vert.spv");
+    fragShaderModule = device.createShaderModule("assets/shaders_bin/shader.frag.spv");
 }
 
 void RenderSystem::createSwapchain() {

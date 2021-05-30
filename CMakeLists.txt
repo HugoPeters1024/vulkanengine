@@ -6,13 +6,13 @@ file(GLOB src CONFIGURE_DEPENDS "include/*.h" "include/*.hpp" "src/*.cpp")
 
 macro(shader)
     add_custom_command(
-            OUTPUT glsl_shaders_bin/${ARGV0}.spv
-            DEPENDS glsl_shaders/${ARGV0}
+            OUTPUT assets/shaders_bin/${ARGV0}.spv
+            DEPENDS assets/shaders/${ARGV0}
             COMMAND /usr/bin/glslc
-            ARGS ${CMAKE_SOURCE_DIR}/glsl_shaders/${ARGV0} -o ${CMAKE_SOURCE_DIR}/glsl_shaders_bin/${ARGV0}.spv
+            ARGS ${CMAKE_SOURCE_DIR}/assets/shaders/${ARGV0} -o ${CMAKE_SOURCE_DIR}/assets/shaders_bin/${ARGV0}.spv
             COMMENT building shaders
             VERBATIM)
-    SET(src ${src} glsl_shaders_bin/${ARGV0}.spv)
+    SET(src ${src} assets/shaders_bin/${ARGV0}.spv)
 endmacro()
 
 shader("shader.vert")
