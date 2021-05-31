@@ -28,6 +28,12 @@ link_directories(${CMAKE_SOURCE_DIR}/ecs)
 target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/ecs/include/)
 target_link_libraries(vulkanray ecs)
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/reactphysics3d)
+link_directories(${CMAKE_SOURCE_DIR}/external/reactphysics3d)
+target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/external/reactphysics3d/include/)
+target_link_libraries(vulkanray reactphysics3d)
+
+
 find_package(glm REQUIRED)
 message(STATUS "GLM included at ${GLM_INCLUDE_DIR}")
 

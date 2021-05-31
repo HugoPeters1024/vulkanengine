@@ -162,6 +162,7 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
         auto scale = glm::scale(glm::mat4(1.0f), transformComp.scale);
 
         push.mvp = translation * rotationx * rotationy * rotationz * scale;
+        push.mvp = transformComp.transform;
         vkCmdPushConstants(
                 commandBuffer,
                 vkPipelineLayout,

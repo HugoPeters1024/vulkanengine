@@ -10,6 +10,7 @@ void App::Run() {
     while (!window.shouldClose()) {
         window.processEvents();
         inputSystem->Update();
+        physicsSystem->Update();
         renderSystem->Render();
         auto& transform = ecsCoordinator.GetComponent<TransformComponent>(cube);
         transform.rotation.y += 0.01f;
@@ -29,12 +30,15 @@ void App::createECSSystems() {
 
     ecsCoordinator.RegisterComponent<InputComponent>();
     inputSystem = ecsCoordinator.RegisterSystem<InputSystem>(window.glfwWindow);
+
+    ecsCoordinator.RegisterComponent<PhysicsComponent>();
+    physicsSystem = ecsCoordinator.RegisterSystem<PhysicsSystem>();
 }
 
 void App::loadModel() {
     texture = EvTexture::fromFile(device, "assets/textures/cube.png");
     whiteTex = EvTexture::fromIntColor(device, 0xffffff);
-    model = renderSystem->createModel("assets/models/lucy.obj", whiteTex.get());
+    model = renderSystem->createModel("assets/models/cube.obj", whiteTex.get());
 }
 
 void App::createECSWorld() {
@@ -49,5 +53,8 @@ void App::createECSWorld() {
                 if (inputHelper.isDown(GLFW_KEY_UP)) transform.position.z += 0.05f;
                 if (inputHelper.isDown(GLFW_KEY_DOWN)) transform.position.z -= 0.05f;
             },
+    });
+    ecsCoordinator.AddComponent(cube, PhysicsComponent {
+        .rigidBody = physicsSystem->cubeBody(glm::vec3(1.0f)),
     });
 }
