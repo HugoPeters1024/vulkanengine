@@ -44,11 +44,14 @@ std::vector<Vertex> EvModel::loadModel(const std::string& filename) {
                 float vy = attrib.vertices[3 * idx.vertex_index + 1];
                 float vz = attrib.vertices[3 * idx.vertex_index + 2];
 
+                float uvx = attrib.texcoords[2 * idx.texcoord_index + 0];
+                float uvy = attrib.texcoords[2 * idx.texcoord_index + 1];
+
                 float nx = attrib.normals[3 * idx.normal_index + 0];
                 float ny = attrib.normals[3 * idx.normal_index + 1];
                 float nz = attrib.normals[3 * idx.normal_index + 2];
 
-                ret.push_back(Vertex { glm::vec3(vx, vy, vz), glm::vec3(nx, ny, nz) });
+                ret.push_back(Vertex { glm::vec3(vx, vy, vz), glm::vec2(uvx, uvy), glm::vec3(nx, ny, nz) });
             }
         }
     }
@@ -66,7 +69,7 @@ void EvModel::createVertexBuffers(const std::vector<Vertex> &vertices) {
 
 void EvModel::bind(VkCommandBuffer commandBuffer) {
     assert(texture && "Texture must be set");
-    assert(vkDescriptorSets.size() > 0 && "Descriptor set must have been created");
+    assert(!vkDescriptorSets.empty() && "Descriptor set must have been created");
     VkBuffer buffers[] = {vkVertexBuffer};
     VkDeviceSize offsets[] = {0};
 
@@ -97,6 +100,12 @@ std::vector<VkVertexInputAttributeDescription> Vertex::getAttributeDescriptions(
         },
         VkVertexInputAttributeDescription {
                 .location = 1,
+                .binding = 0,
+                .format = VK_FORMAT_R32G32_SFLOAT,
+                .offset = offsetof(Vertex, uv),
+        },
+        VkVertexInputAttributeDescription {
+                .location = 2,
                 .binding = 0,
                 .format = VK_FORMAT_R32G32B32_SFLOAT,
                 .offset = offsetof(Vertex, normal),
