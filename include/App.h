@@ -9,6 +9,7 @@
 #include <ecs/ecs.h>
 #include "RenderSystem.h"
 #include "InputSystem.h"
+#include "EvTexture.h"
 
 #pragma once
 
@@ -18,14 +19,17 @@ class App {
     EvDevice device{deviceInfo, window};
     std::unique_ptr<EvModel> model{};
     float time = 0;
-    Entity triangle;
+    Entity cube;
 
     EcsCoordinator ecsCoordinator;
     std::shared_ptr<RenderSystem> renderSystem;
     std::shared_ptr<InputSystem> inputSystem;
 
-    void createECS();
+    std::unique_ptr<EvTexture> texture;
+
+    void createECSSystems();
     void loadModel();
+    void createECSWorld();
 
 public:
     App();

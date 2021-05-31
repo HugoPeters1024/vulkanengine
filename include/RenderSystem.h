@@ -31,9 +31,11 @@ class RenderSystem : public System
     VkShaderModule fragShaderModule;
     EvRastPipelineInfo pipelineInfo{};
     std::unique_ptr<EvRastPipeline> rastPipeline{};
+    VkDescriptorSetLayout vkDescriptorSetLayout;
 
     void createShaderModules();
     void createSwapchain();
+    void createDescriptorSetLayout();
     void createPipelineLayout();
     void createPipeline();
     void allocateCommandBuffers();
@@ -46,4 +48,5 @@ public:
     void Render();
 
     Signature GetSignature() const override;
+    std::unique_ptr<EvModel> createModel(const std::string& filename, const EvTexture* texture);
 };

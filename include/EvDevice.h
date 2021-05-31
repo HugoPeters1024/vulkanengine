@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include <set>
+#include <unordered_map>
 
 #include "utils.hpp"
 #include "UtilsPhysicalDevice.hpp"
@@ -12,6 +13,7 @@ struct EvDeviceInfo {
     std::set<const char*> validationLayers;
     std::set<const char*> instanceExtensions;
     std::set<const char*> deviceExtensions;
+    uint32_t textureDescriptorSetCount = 0;
 };
 
 class EvDevice : NoCopy {
@@ -24,6 +26,7 @@ private:
     void createLogicalDevice();
     void createAllocator();
     void createCommandPool();
+    void createDescriptorPool();
 
 public:
     EvDeviceInfo info;
@@ -40,6 +43,7 @@ public:
     VkDevice vkDevice;
     VmaAllocator vmaAllocator;
     VkCommandPool vkCommandPool;
+    VkDescriptorPool vkDescriptorPool;
 
     VkQueue computeQueue;
     VkQueue graphicsQueue;
@@ -61,4 +65,6 @@ public:
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
     void copyBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize size);
+    void copyBufferToImage(VkImage dst, VkBuffer src, uint32_t width, uint32_t height);
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 };

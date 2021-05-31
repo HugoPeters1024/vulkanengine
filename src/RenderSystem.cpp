@@ -3,17 +3,21 @@
 RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     createShaderModules();
     createSwapchain();
+    createDescriptorSetLayout();
     createPipelineLayout();
     createPipeline();
     allocateCommandBuffers();
 }
 
 RenderSystem::~RenderSystem() {
+    printf("Destroying descriptor set layout\n");
+    vkDestroyDescriptorSetLayout(device.vkDevice, vkDescriptorSetLayout, nullptr);
+
     printf("Destroying the shader modules\n");
     vkDestroyShaderModule(device.vkDevice, vertShaderModule, nullptr);
     vkDestroyShaderModule(device.vkDevice, fragShaderModule, nullptr);
 
-    printf("Destroying pipeline layout\n");
+    printf("Destroying pipeline pipelineLayout\n");
     vkDestroyPipelineLayout(device.vkDevice, vkPipelineLayout, nullptr);
 }
 
@@ -40,8 +44,8 @@ void RenderSystem::createPipelineLayout() {
 
     VkPipelineLayoutCreateInfo createInfo {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 0,
-            .pSetLayouts = nullptr,
+            .setLayoutCount = 1,
+            .pSetLayouts = &vkDescriptorSetLayout,
             .pushConstantRangeCount = 1,
             .pPushConstantRanges = &pushConstantRange,
     };
@@ -52,10 +56,31 @@ void RenderSystem::createPipelineLayout() {
 void RenderSystem::createPipeline() {
     EvRastPipeline::defaultRastPipelineInfo(vertShaderModule, fragShaderModule, device.msaaSamples, &pipelineInfo);
     pipelineInfo.renderPass = swapchain->vkRenderPass;
-    pipelineInfo.layout = vkPipelineLayout;
+    pipelineInfo.pipelineLayout = vkPipelineLayout;
+    pipelineInfo.descriptorSetLayout = vkDescriptorSetLayout;
     pipelineInfo.swapchainImages = static_cast<uint32>(swapchain->vkImages.size());
 
     rastPipeline = std::make_unique<EvRastPipeline>(device, pipelineInfo);
+}
+
+void RenderSystem::createDescriptorSetLayout() {
+    VkDescriptorSetLayoutBinding textureBinding {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .pImmutableSamplers = nullptr,
+    };
+
+    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {textureBinding};
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = static_cast<uint32_t>(bindings.size()),
+        .pBindings = bindings.data(),
+    };
+
+    vkCheck(vkCreateDescriptorSetLayout(device.vkDevice, &layoutInfo, nullptr, &vkDescriptorSetLayout));
 }
 
 void RenderSystem::allocateCommandBuffers() {
@@ -186,6 +211,45 @@ Signature RenderSystem::GetSignature() const {
     signature.set(m_coordinator->GetComponentType<ModelComponent>());
     signature.set(m_coordinator->GetComponentType<TransformComponent>());
     return signature;
+}
+
+std::unique_ptr<EvModel> RenderSystem::createModel(const std::string &filename, const EvTexture *texture) {
+    auto ret = std::make_unique<EvModel>(device, filename, texture);
+    ret->vkDescriptorSets.resize(swapchain->vkImages.size());
+
+    std::vector<VkDescriptorSetLayout> layouts(ret->vkDescriptorSets.size(), vkDescriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = device.vkDescriptorPool,
+        .descriptorSetCount = static_cast<uint32_t>(ret->vkDescriptorSets.size()),
+        .pSetLayouts = layouts.data(),
+    };
+
+    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, ret->vkDescriptorSets.data()));
+
+    auto imageDescriptor = texture->getDescriptorInfo();
+
+    for(int i=0; i<swapchain->vkImages.size(); i++) {
+        std::array<VkWriteDescriptorSet,1> descriptorWrites {
+            VkWriteDescriptorSet {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = ret->vkDescriptorSets[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &imageDescriptor,
+            },
+        };
+
+        vkUpdateDescriptorSets(
+                device.vkDevice,
+                static_cast<uint32_t>(descriptorWrites.size()),
+                descriptorWrites.data(),
+                0, nullptr);
+    }
+
+    return ret;
 }
 
 

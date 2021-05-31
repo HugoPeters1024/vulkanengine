@@ -2,6 +2,7 @@
 
 #include "EvDevice.h"
 #include "EvModel.h"
+#include "EvTexture.h"
 #include <vulkan/vulkan.h>
 #include <string>
 #include <vector>
@@ -18,20 +19,26 @@ struct EvRastPipelineInfo : NoCopy {
     VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo;
     std::vector<VkDynamicState> dynamicStateEnables;
     VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo;
+    VkPipelineLayout pipelineLayout = nullptr;
+    VkDescriptorSetLayout descriptorSetLayout = nullptr;
     VkRenderPass renderPass = nullptr;
-    VkPipelineLayout layout = nullptr;
     uint subpass = 0;
     uint swapchainImages = 0;
+
+    void assertComplete() const {
+        assert(pipelineLayout);
+        assert(descriptorSetLayout);
+        assert(renderPass);
+        assert(swapchainImages > 0);
+    }
 };
 
 class EvRastPipeline : NoCopy {
 private:
     const EvDevice& device;
     VkPipeline vkPipeline;
-    VkDescriptorPool vkDescriptorPool;
 
     void createGraphicsPipeline(const EvRastPipelineInfo& info);
-    void createDescriptorPool(const EvRastPipelineInfo &info);
 
 public:
     EvRastPipeline(const EvDevice& device, const EvRastPipelineInfo &info);

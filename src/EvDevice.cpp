@@ -16,9 +16,12 @@ EvDevice::EvDevice(EvDeviceInfo info, EvWindow &window) : window(window), info(s
     createLogicalDevice();
     createAllocator();
     createCommandPool();
+    createDescriptorPool();
 }
 
 EvDevice::~EvDevice() {
+    printf("Destroying descriptor pool\n");
+    vkDestroyDescriptorPool(vkDevice, vkDescriptorPool, nullptr);
     printf("Destroying commandPool\n");
     vkDestroyCommandPool(vkDevice, vkCommandPool, nullptr);
     printf("Destroying the VMA allocator\n");
@@ -180,6 +183,22 @@ void EvDevice::createCommandPool() {
     };
 
     vkCheck(vkCreateCommandPool(vkDevice, &createInfo, nullptr, &vkCommandPool));
+}
+
+void EvDevice::createDescriptorPool() {
+    VkDescriptorPoolSize poolSize {
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 20,
+    };
+
+    VkDescriptorPoolCreateInfo poolInfo {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .maxSets = 20,
+            .poolSizeCount = 1,
+            .pPoolSizes = &poolSize,
+    };
+
+    vkCheck(vkCreateDescriptorPool(vkDevice, &poolInfo, nullptr, &vkDescriptorPool));
 }
 
 bool EvDevice::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
@@ -375,7 +394,88 @@ VkFormat EvDevice::findDepthFormat() const {
     );
 }
 
+void EvDevice::copyBufferToImage(VkImage dst, VkBuffer src, uint32_t width, uint32_t height) {
+    auto cmdBuffer = beginSingleTimeCommands();
+    VkBufferImageCopy region {
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .imageOffset = {0,0,0},
+        .imageExtent = {width, height, 1},
+    };
 
+    vkCmdCopyBufferToImage(cmdBuffer, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    endSingleTimeCommands(cmdBuffer);
+}
 
+void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+    struct TransitionInfo_T {
+        VkAccessFlags srcAccessMask;
+        VkAccessFlags dstAccessMask;
+        VkPipelineStageFlags srcStage;
+        VkPipelineStageFlags dstStage;
+    };
 
+    std::unordered_map<std::pair<VkImageLayout, VkImageLayout>, TransitionInfo_T, pair_hash> lookup {
+        {
+            {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL},
+            TransitionInfo_T {
+                .srcAccessMask = 0,
+                .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                .dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            }
+        },
+        {
+            {VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+            TransitionInfo_T {
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT,
+                .dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            }
+        }
+    };
+
+    if (lookup.find({oldLayout, newLayout}) == lookup.end()) {
+        throw std::runtime_error("Transition not implemented");
+    }
+
+    auto transitionInfo = lookup[{oldLayout, newLayout}];
+
+    VkImageMemoryBarrier barrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = transitionInfo.srcAccessMask,
+        .dstAccessMask = transitionInfo.dstAccessMask,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = image,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
+
+    auto cmdBuffer = beginSingleTimeCommands();
+    vkCmdPipelineBarrier(
+            cmdBuffer,
+            transitionInfo.srcStage, transitionInfo.dstStage,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier);
+
+    endSingleTimeCommands(cmdBuffer);
+}
 

@@ -1,16 +1,17 @@
-#include "EvModel.h"
 #define TINYOBJLOADER_IMPLEMENTATION
-#include "tiny_obj_loader.h"
+#include "EvModel.h"
 
-EvModel::EvModel(EvDevice &device, const std::vector<Vertex> &vertices) : device(device) {
+EvModel::EvModel(EvDevice &device, const std::vector<Vertex> &vertices, const EvTexture* texture)
+    : device(device), texture(texture) {
     createVertexBuffers(vertices);
 }
 
-EvModel::EvModel(EvDevice &device, const std::string &objFile)
-        : EvModel(device, loadModel(objFile)) {
+EvModel::EvModel(EvDevice &device, const std::string &objFile, const EvTexture *texture)
+        : EvModel(device, loadModel(objFile), texture) {
 }
 
 EvModel::~EvModel() {
+    // Descriptor sets are destroyed when the pool is destroyed
     printf("Destroying vertex buffer\n");
     vmaDestroyBuffer(device.vmaAllocator, vkVertexBuffer, vkVertexMemory);
 }
@@ -64,6 +65,8 @@ void EvModel::createVertexBuffers(const std::vector<Vertex> &vertices) {
 }
 
 void EvModel::bind(VkCommandBuffer commandBuffer) {
+    assert(texture && "Texture must be set");
+    assert(vkDescriptorSets.size() > 0 && "Descriptor set must have been created");
     VkBuffer buffers[] = {vkVertexBuffer};
     VkDeviceSize offsets[] = {0};
 

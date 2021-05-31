@@ -6,7 +6,9 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
+#include <tiny_obj_loader.h>
 #include "EvDevice.h"
+#include "EvTexture.h"
 
 
 struct Vertex {
@@ -28,8 +30,10 @@ private:
     static std::vector<Vertex> loadModel(const std::string& filename);
 
 public:
-    EvModel(EvDevice& device, const std::vector<Vertex>& vertices);
-    EvModel(EvDevice& device, const std::string& objFile);
+    const EvTexture *texture = nullptr;
+    std::vector<VkDescriptorSet> vkDescriptorSets;
+    EvModel(EvDevice& device, const std::vector<Vertex>& vertices, const EvTexture* texture);
+    EvModel(EvDevice &device, const std::string &objFile, const EvTexture *texture);
     ~EvModel();
 
     void bind(VkCommandBuffer commandBuffer);
