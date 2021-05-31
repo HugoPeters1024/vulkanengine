@@ -25,7 +25,7 @@ class App {
     std::shared_ptr<RenderSystem> renderSystem;
     std::shared_ptr<InputSystem> inputSystem;
 
-    std::unique_ptr<EvTexture> texture;
+    std::unique_ptr<EvTexture> texture, whiteTex;
 
     void createECSSystems();
     void loadModel();

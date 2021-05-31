@@ -13,7 +13,7 @@ void App::Run() {
         renderSystem->Render();
         auto& transform = ecsCoordinator.GetComponent<TransformComponent>(cube);
         transform.rotation.y += 0.01f;
-        transform.rotation.z += 0.01515926f;
+        //transform.rotation.z += 0.01515926f;
         time += 0.01f;
     }
 
@@ -32,14 +32,15 @@ void App::createECSSystems() {
 }
 
 void App::loadModel() {
-    texture = std::make_unique<EvTexture>(device, "assets/textures/texture.jpg");
-    model = renderSystem->createModel("cube.obj", texture.get());
+    texture = EvTexture::fromFile(device, "assets/textures/cube.png");
+    whiteTex = EvTexture::fromIntColor(device, 0xffffff);
+    model = renderSystem->createModel("assets/models/lucy.obj", whiteTex.get());
 }
 
 void App::createECSWorld() {
     cube = ecsCoordinator.CreateEntity();
     ecsCoordinator.AddComponent(cube, ModelComponent{model.get()});
-    ecsCoordinator.AddComponent(cube, TransformComponent{glm::vec3(0, 0, 10), glm::vec3(0.0f)});
+    ecsCoordinator.AddComponent(cube, TransformComponent{glm::vec3(0, 0, 6), glm::vec3(0.0f), glm::vec3(0.1f)});
     ecsCoordinator.AddComponent(cube, InputComponent {
             .handler = [this](const EvInputHelper& inputHelper) {
                 auto &transform = ecsCoordinator.GetComponent<TransformComponent>(cube);

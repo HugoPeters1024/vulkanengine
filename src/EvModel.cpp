@@ -48,12 +48,22 @@ void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertic
                 float vy = attrib.vertices[3 * idx.vertex_index + 1];
                 float vz = attrib.vertices[3 * idx.vertex_index + 2];
 
-                float uvx = attrib.texcoords[2 * idx.texcoord_index + 0];
-                float uvy = attrib.texcoords[2 * idx.texcoord_index + 1];
+                float uvx = 0.0f;
+                float uvy = 0.0f;
+                if (idx.texcoord_index != -1) {
+                    uvx = attrib.texcoords[2 * idx.texcoord_index + 0];
+                    uvy = attrib.texcoords[2 * idx.texcoord_index + 1];
+                }
 
-                float nx = attrib.normals[3 * idx.normal_index + 0];
-                float ny = attrib.normals[3 * idx.normal_index + 1];
-                float nz = attrib.normals[3 * idx.normal_index + 2];
+                float nx = 0.0f;
+                float ny = 0.0f;
+                float nz = 0.0f;
+
+                if (idx.normal_index != -1) {
+                    nx = attrib.normals[3 * idx.normal_index + 0];
+                    ny = attrib.normals[3 * idx.normal_index + 1];
+                    nz = attrib.normals[3 * idx.normal_index + 2];
+                }
 
                 Vertex vertex {
                     glm::vec3(vx, vy, vz), glm::vec2(uvx, uvy), glm::vec3(nx, ny, nz)
@@ -79,7 +89,7 @@ void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertic
 
 void EvModel::createVertexBuffer(const std::vector<Vertex> &vertices) {
     vertexCount = static_cast<uint32_t>(vertices.size());
-    assert(vertexCount > 0 && vertexCount % 3 == 0 && "vertexCount not a multiple of 3");
+//    assert(vertexCount > 0 && vertexCount % 3 == 0 && "vertexCount not a multiple of 3");
 
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
     device.createDeviceBuffer(bufferSize, (void*)vertices.data(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &vkVertexBuffer, &vkVertexMemory);

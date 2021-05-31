@@ -159,8 +159,9 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
         auto rotationx = glm::rotate(glm::mat4(1.0f), transformComp.rotation.x, glm::vec3(1,0,0));
         auto rotationy = glm::rotate(glm::mat4(1.0f), transformComp.rotation.y, glm::vec3(0,1,0));
         auto rotationz = glm::rotate(glm::mat4(1.0f), transformComp.rotation.z, glm::vec3(0,0,1));
+        auto scale = glm::scale(glm::mat4(1.0f), transformComp.scale);
 
-        push.mvp = translation * rotationx * rotationy * rotationz;
+        push.mvp = translation * rotationx * rotationy * rotationz * scale;
         vkCmdPushConstants(
                 commandBuffer,
                 vkPipelineLayout,
