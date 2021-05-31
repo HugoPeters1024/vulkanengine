@@ -168,6 +168,7 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
                 0,
                 sizeof(push),
                 &push);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipelineLayout, 0, 1, &modelComp.model->vkDescriptorSets[imageIndex], 0, 0);
         modelComp.model->bind(commandBuffer);
         modelComp.model->draw(commandBuffer);
     }
