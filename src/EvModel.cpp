@@ -1,22 +1,25 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "EvModel.h"
 
-EvModel::EvModel(EvDevice &device, const std::vector<Vertex> &vertices, const EvTexture* texture)
-    : device(device), texture(texture) {
-    createVertexBuffers(vertices);
-}
-
 EvModel::EvModel(EvDevice &device, const std::string &objFile, const EvTexture *texture)
-        : EvModel(device, loadModel(objFile), texture) {
+        : device(device), texture(texture) {
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    loadModel(objFile, &vertices, &indices);
+    createVertexBuffer(vertices);
+    createIndexBuffer(indices);
 }
 
 EvModel::~EvModel() {
     // Descriptor sets are destroyed when the pool is destroyed
+    printf("Destroying index buffer\n");
+    vmaDestroyBuffer(device.vmaAllocator, vkIndexBuffer, vkIndexMemory);
+
     printf("Destroying vertex buffer\n");
     vmaDestroyBuffer(device.vmaAllocator, vkVertexBuffer, vkVertexMemory);
 }
 
-std::vector<Vertex> EvModel::loadModel(const std::string& filename) {
+void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices) {
     tinyobj:: ObjReaderConfig config;
 
     tinyobj::ObjReader reader;
@@ -32,7 +35,8 @@ std::vector<Vertex> EvModel::loadModel(const std::string& filename) {
     const auto& shapes = reader.GetShapes();
     const auto& materials = reader.GetMaterials();
 
-    std::vector<Vertex> ret;
+    uint indexHead = 0;
+    std::unordered_map<Vertex, uint32_t> indexMap;
 
     for(const auto& shape : shapes) {
         for(size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
@@ -51,20 +55,42 @@ std::vector<Vertex> EvModel::loadModel(const std::string& filename) {
                 float ny = attrib.normals[3 * idx.normal_index + 1];
                 float nz = attrib.normals[3 * idx.normal_index + 2];
 
-                ret.push_back(Vertex { glm::vec3(vx, vy, vz), glm::vec2(uvx, uvy), glm::vec3(nx, ny, nz) });
+                Vertex vertex {
+                    glm::vec3(vx, vy, vz), glm::vec2(uvx, uvy), glm::vec3(nx, ny, nz)
+                };
+
+                if (indexMap.find(vertex) == indexMap.end()) {
+                    indexMap.insert({vertex, indexHead++});
+                }
+
+                indices->push_back(indexMap[vertex]);
             }
         }
     }
 
-    return ret;
+    vertices->resize(indexHead);
+    for(auto [vertex, index] : indexMap) {
+        (*vertices)[index] = vertex;
+    }
+
+
+    printf("Loaded model %s: Vertices: %lu, Indices: %lu\n", filename.c_str(), vertices->size(), indices->size());
 }
 
-void EvModel::createVertexBuffers(const std::vector<Vertex> &vertices) {
+void EvModel::createVertexBuffer(const std::vector<Vertex> &vertices) {
     vertexCount = static_cast<uint32_t>(vertices.size());
     assert(vertexCount > 0 && vertexCount % 3 == 0 && "vertexCount not a multiple of 3");
 
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
     device.createDeviceBuffer(bufferSize, (void*)vertices.data(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &vkVertexBuffer, &vkVertexMemory);
+}
+
+void EvModel::createIndexBuffer(const std::vector<uint32_t> &indices) {
+    indicesCount = static_cast<uint32_t>(indices.size());
+    assert(indicesCount > 0 && indicesCount % 3 == 0 && "index count not a multiple of 3");
+
+    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+    device.createDeviceBuffer(bufferSize, (void*)indices.data(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, &vkIndexBuffer, &vkIndexMemory);
 }
 
 void EvModel::bind(VkCommandBuffer commandBuffer) {
@@ -74,10 +100,11 @@ void EvModel::bind(VkCommandBuffer commandBuffer) {
     VkDeviceSize offsets[] = {0};
 
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, vkIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 }
 
 void EvModel::draw(VkCommandBuffer commandBuffer) const {
-    vkCmdDraw(commandBuffer, vertexCount, 1, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, indicesCount, 1, 0, 0, 0);
 }
 
 std::vector<VkVertexInputBindingDescription> Vertex::getBindingDescriptions() {

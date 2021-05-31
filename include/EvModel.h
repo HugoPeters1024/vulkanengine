@@ -6,6 +6,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
+#include <glm/gtx/hash.hpp>
 #include <tiny_obj_loader.h>
 #include "EvDevice.h"
 #include "EvTexture.h"
@@ -16,9 +17,25 @@ struct Vertex {
     glm::vec2 uv;
     glm::vec3 normal;
 
+    bool operator ==(const Vertex& o) const {
+        return position == o.position && uv == o.uv && normal == o.normal;
+    }
+
     static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
     static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
 };
+
+namespace std {
+    template<>
+    struct hash<Vertex> {
+        std::size_t operator() (const Vertex& vertex) const {
+            auto phash = std::hash<glm::vec3>()(vertex.position);
+            auto uvhash = std::hash<glm::vec2>()(vertex.uv);
+            auto nhash = std::hash<glm::vec3>()(vertex.normal);
+            return phash ^ uvhash ^ nhash;
+        }
+    };
+}
 
 class EvModel : NoCopy {
 private:
@@ -26,14 +43,17 @@ private:
     VkBuffer vkVertexBuffer;
     VmaAllocation vkVertexMemory;
     uint32_t vertexCount;
+    VkBuffer vkIndexBuffer;
+    VmaAllocation vkIndexMemory;
+    uint32_t indicesCount;
 
-    void createVertexBuffers(const std::vector<Vertex>& vertices);
-    static std::vector<Vertex> loadModel(const std::string& filename);
+    void createVertexBuffer(const std::vector<Vertex>& vertices);
+    void createIndexBuffer(const std::vector<uint32_t>& indices);
+    static void loadModel(const std::string& filename, std::vector<Vertex>* vertices, std::vector<uint32_t> *indices);
 
 public:
     const EvTexture *texture = nullptr;
     std::vector<VkDescriptorSet> vkDescriptorSets;
-    EvModel(EvDevice& device, const std::vector<Vertex>& vertices, const EvTexture* texture);
     EvModel(EvDevice &device, const std::string &objFile, const EvTexture *texture);
     ~EvModel();
 
