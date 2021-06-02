@@ -153,16 +153,8 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
 
     for (const auto& entity : m_entities) {
         auto& modelComp = m_coordinator->GetComponent<ModelComponent>(entity);
-        auto& transformComp = m_coordinator->GetComponent<TransformComponent>(entity);
-
-        auto translation = glm::translate(glm::mat4(1.0f), transformComp.position);
-        auto rotationx = glm::rotate(glm::mat4(1.0f), transformComp.rotation.x, glm::vec3(1,0,0));
-        auto rotationy = glm::rotate(glm::mat4(1.0f), transformComp.rotation.y, glm::vec3(0,1,0));
-        auto rotationz = glm::rotate(glm::mat4(1.0f), transformComp.rotation.z, glm::vec3(0,0,1));
-        auto scale = glm::scale(glm::mat4(1.0f), transformComp.scale);
-
-        push.mvp = translation * rotationx * rotationy * rotationz * scale;
-        push.mvp = transformComp.transform;
+        auto scaleMatrix = glm::scale(glm::mat4(1.0f), modelComp.scale);
+        push.mvp = modelComp.transform * scaleMatrix;
         vkCmdPushConstants(
                 commandBuffer,
                 vkPipelineLayout,
@@ -170,7 +162,7 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
                 0,
                 sizeof(push),
                 &push);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipelineLayout, 0, 1, &modelComp.model->vkDescriptorSets[imageIndex], 0, 0);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipelineLayout, 0, 1, &modelComp.model->vkDescriptorSets[imageIndex], 0, nullptr);
         modelComp.model->bind(commandBuffer);
         modelComp.model->draw(commandBuffer);
     }
@@ -212,7 +204,6 @@ void RenderSystem::Render() {
 Signature RenderSystem::GetSignature() const {
     Signature signature{};
     signature.set(m_coordinator->GetComponentType<ModelComponent>());
-    signature.set(m_coordinator->GetComponentType<TransformComponent>());
     return signature;
 }
 
@@ -246,10 +237,10 @@ std::unique_ptr<EvModel> RenderSystem::createModel(const std::string &filename, 
         };
 
         vkUpdateDescriptorSets(
-                device.vkDevice,
-                static_cast<uint32_t>(descriptorWrites.size()),
-                descriptorWrites.data(),
-                0, nullptr);
+            device.vkDevice,
+            static_cast<uint32_t>(descriptorWrites.size()),
+            descriptorWrites.data(),
+            0, nullptr);
     }
 
     return ret;

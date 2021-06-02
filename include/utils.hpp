@@ -6,6 +6,8 @@
 #include <vulkan/vulkan.h>
 #include <cstring>
 #include <fstream>
+#include <reactphysics3d/reactphysics3d.h>
+#include <glm/glm.hpp>
 
 class NoCopy
 {
@@ -71,5 +73,11 @@ struct pair_hash {
         auto h1 = std::hash<T1>()(p.first);
         auto h2 = std::hash<T1>()(p.second);
         return h1 ^ h2;
+    }
+};
+
+namespace reactphysics3d {
+    inline Vector3 mkVector3(glm::vec3 v) {
+        return Vector3(v.x, v.y, v.z);
     }
 };

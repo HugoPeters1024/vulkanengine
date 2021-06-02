@@ -13,7 +13,6 @@ PhysicsSystem::~PhysicsSystem() {
 Signature PhysicsSystem::GetSignature() const {
     Signature ret;
     ret.set(m_coordinator->GetComponentType<PhysicsComponent>());
-    ret.set(m_coordinator->GetComponentType<TransformComponent>());
     return ret;
 }
 
@@ -21,21 +20,50 @@ void PhysicsSystem::Update() {
     world->update(1.0f / 60.0f);
 
     for(const auto& entity : m_entities) {
-        const auto& physicsComp = m_coordinator->GetComponent<PhysicsComponent>(entity);
-        auto& transformComp = m_coordinator->GetComponent<TransformComponent>(entity);
-        rp3::Transform transform = physicsComp.rigidBody->getTransform();
-        transformComp.transform = glm::mat4(1.0f);
-        transform.getOpenGLMatrix((float*)&transformComp.transform);
-        int lol = 1;
+        auto& physicsComp = m_coordinator->GetComponent<PhysicsComponent>(entity);
+
+        if (physicsComp.transformResult != nullptr) {
+            rp3::Transform transform = physicsComp.rigidBody->getTransform();
+            transform.getOpenGLMatrix((float*)physicsComp.transformResult);
+        }
     }
 }
 
-rp3::RigidBody *PhysicsSystem::cubeBody(glm::vec3 size) {
-    rp3::Vector3 position(0.0, 0.0, 6.0);
+void PhysicsSystem::linkModelComponent(Entity entity) {
+    assert(m_coordinator->HasComponent<PhysicsComponent>(entity) && "entity must have physics component");
+    assert(m_coordinator->HasComponent<ModelComponent>(entity) && "entity must have model component");
+    auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
+    auto& model = m_coordinator->GetComponent<ModelComponent>(entity);
+    physics.linkMat4(&model.transform);
+}
+
+rp3::RigidBody* PhysicsSystem::createRigidBody(rp3::BodyType bodyType, glm::vec3 pos) {
+    rp3::Vector3 position(pos.x, pos.y, pos.z);
     rp3::Quaternion orientation = rp3::Quaternion::identity();
     rp3::Transform transform(position, orientation);
 
     auto ret = world->createRigidBody(transform);
-    ret->setType(rp3::BodyType::DYNAMIC);
+    ret->setType(bodyType);
     return ret;
+}
+
+void PhysicsSystem::addIntersectionBoxBody(Entity entity, BoundingBox box) {
+    assert(m_coordinator->HasComponent<PhysicsComponent>(entity));
+    auto halfExtents = (box.vmax - box.vmin) / 2.0f;
+    auto shape = physicsCommon.createBoxShape(rp3::mkVector3(halfExtents));
+    auto transform = rp3::Transform::identity();
+    auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
+    physics.rigidBody->addCollider(shape, transform);
+}
+
+void PhysicsSystem::setMass(Entity entity, float mass) {
+    assert(m_coordinator->HasComponent<PhysicsComponent>(entity));
+    auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
+    physics.rigidBody->setMass(mass);
+}
+
+void PhysicsSystem::setAngularVelocity(Entity entity, glm::vec3 eulerAngles) {
+    assert(m_coordinator->HasComponent<PhysicsComponent>(entity));
+    auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
+    physics.rigidBody->setAngularVelocity(rp3::mkVector3(eulerAngles));
 }

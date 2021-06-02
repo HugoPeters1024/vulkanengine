@@ -51,8 +51,12 @@ public:
     }
 
     T& GetData(Entity entity) {
-        assert(m_entityToIndexMap.find(entity) != m_entityToIndexMap.end() && "Component does not exist for this  entity");
+        assert(m_entityToIndexMap.find(entity) != m_entityToIndexMap.end() && "Component does not exist for this entity");
         return m_componentArray[m_entityToIndexMap[entity]];
+    }
+
+    bool HasEntity(Entity entity) {
+        return m_entityToIndexMap.find(entity) != m_entityToIndexMap.end();
     }
 
     void EntityDestroyed(Entity entity) override {

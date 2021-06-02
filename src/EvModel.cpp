@@ -5,7 +5,7 @@ EvModel::EvModel(EvDevice &device, const std::string &objFile, const EvTexture *
         : device(device), texture(texture) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    loadModel(objFile, &vertices, &indices);
+    loadModel(objFile, &vertices, &indices, &boundingBox);
     createVertexBuffer(vertices);
     createIndexBuffer(indices);
 }
@@ -19,7 +19,8 @@ EvModel::~EvModel() {
     vmaDestroyBuffer(device.vmaAllocator, vkVertexBuffer, vkVertexMemory);
 }
 
-void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices) {
+void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, BoundingBox *box) {
+    *box = BoundingBox::InsideOut();
     tinyobj:: ObjReaderConfig config;
 
     tinyobj::ObjReader reader;
@@ -44,31 +45,28 @@ void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertic
             for(size_t v = 0; v<3; v++) {
                 const auto& idx = shape.mesh.indices[f * 3 + v];
 
-                float vx = attrib.vertices[3 * idx.vertex_index + 0];
-                float vy = attrib.vertices[3 * idx.vertex_index + 1];
-                float vz = attrib.vertices[3 * idx.vertex_index + 2];
+                glm::vec3 vpos;
+                vpos[0] = attrib.vertices[3 * idx.vertex_index + 0];
+                vpos[1] = attrib.vertices[3 * idx.vertex_index + 1];
+                vpos[2] = attrib.vertices[3 * idx.vertex_index + 2];
 
-                float uvx = 0.0f;
-                float uvy = 0.0f;
+                box->consumePoint(vpos);
+
+                glm::vec2 uv(0.0f);
                 if (idx.texcoord_index != -1) {
-                    uvx = attrib.texcoords[2 * idx.texcoord_index + 0];
-                    uvy = attrib.texcoords[2 * idx.texcoord_index + 1];
+                    uv[0] = attrib.texcoords[2 * idx.texcoord_index + 0];
+                    uv[1] = attrib.texcoords[2 * idx.texcoord_index + 1];
                 }
 
-                float nx = 0.0f;
-                float ny = 0.0f;
-                float nz = 0.0f;
+                glm::vec3 normal(0.0f);
 
                 if (idx.normal_index != -1) {
-                    nx = attrib.normals[3 * idx.normal_index + 0];
-                    ny = attrib.normals[3 * idx.normal_index + 1];
-                    nz = attrib.normals[3 * idx.normal_index + 2];
+                    normal[0] = attrib.normals[3 * idx.normal_index + 0];
+                    normal[1] = attrib.normals[3 * idx.normal_index + 1];
+                    normal[2] = attrib.normals[3 * idx.normal_index + 2];
                 }
 
-                Vertex vertex {
-                    glm::vec3(vx, vy, vz), glm::vec2(uvx, uvy), glm::vec3(nx, ny, nz)
-                };
-
+                Vertex vertex { vpos, uv, normal };
                 if (indexMap.find(vertex) == indexMap.end()) {
                     indexMap.insert({vertex, indexHead++});
                 }

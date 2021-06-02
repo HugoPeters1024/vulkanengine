@@ -3,11 +3,15 @@
 #include <ecs/ecs.h>
 #include <reactphysics3d/reactphysics3d.h>
 #include "RenderSystem.h"
+#include "Primitives.h"
 
 namespace rp3 = reactphysics3d;
 
 struct PhysicsComponent {
-    rp3::RigidBody* rigidBody;
+    rp3::RigidBody* rigidBody{};
+    glm::mat4* transformResult = nullptr;
+
+    void linkMat4(glm::mat4* t) { transformResult = t; }
 };
 
 class PhysicsSystem : public System
@@ -20,5 +24,10 @@ public:
     Signature GetSignature() const override;
 
     void Update();
-    rp3::RigidBody* cubeBody(glm::vec3 size);
+    void linkModelComponent(Entity entity);
+    void addIntersectionBoxBody(Entity entity, BoundingBox box);
+    void setMass(Entity entity, float mass);
+    void setAngularVelocity(Entity entity, glm::vec3 eulerAngles);
+
+    rp3::RigidBody *createRigidBody(rp3::BodyType bodyType, glm::vec3 pos);
 };

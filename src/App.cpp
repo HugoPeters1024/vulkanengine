@@ -12,9 +12,6 @@ void App::Run() {
         inputSystem->Update();
         physicsSystem->Update();
         renderSystem->Render();
-        auto& transform = ecsCoordinator.GetComponent<TransformComponent>(cube);
-        transform.rotation.y += 0.01f;
-        //transform.rotation.z += 0.01515926f;
         time += 0.01f;
     }
 
@@ -25,7 +22,6 @@ void App::Run() {
 
 void App::createECSSystems() {
     ecsCoordinator.RegisterComponent<ModelComponent>();
-    ecsCoordinator.RegisterComponent<TransformComponent>();
     renderSystem = ecsCoordinator.RegisterSystem<RenderSystem>(device);
 
     ecsCoordinator.RegisterComponent<InputComponent>();
@@ -38,23 +34,42 @@ void App::createECSSystems() {
 void App::loadModel() {
     texture = EvTexture::fromFile(device, "assets/textures/cube.png");
     whiteTex = EvTexture::fromIntColor(device, 0xffffff);
-    model = renderSystem->createModel("assets/models/cube.obj", whiteTex.get());
+    cubeModel = renderSystem->createModel("assets/models/cube.obj", whiteTex.get());
+    lucyModel = renderSystem->createModel("assets/models/lucy.obj", whiteTex.get());
 }
 
 void App::createECSWorld() {
-    cube = ecsCoordinator.CreateEntity();
-    ecsCoordinator.AddComponent(cube, ModelComponent{model.get()});
-    ecsCoordinator.AddComponent(cube, TransformComponent{glm::vec3(0, 0, 6), glm::vec3(0.0f), glm::vec3(0.1f)});
+    addInstance(cubeModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6));
+    addInstance(cubeModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0.2, -1, 6.1));
+    auto lucy = addInstance(lucyModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.03f), glm::vec3(0.2, -3, 6.01));
+    auto floor = addInstance(cubeModel.get(), rp3::BodyType::KINEMATIC, glm::vec3(5.0f, 0.2f, 5.0f), glm::vec3(0, 4, 6));
+    physicsSystem->setMass(lucy, 10);
+    physicsSystem->setAngularVelocity(floor, glm::vec3(0, 1, 0));
+    /*
     ecsCoordinator.AddComponent(cube, InputComponent {
             .handler = [this](const EvInputHelper& inputHelper) {
-                auto &transform = ecsCoordinator.GetComponent<TransformComponent>(cube);
-                if (inputHelper.isDown(GLFW_KEY_RIGHT)) transform.position.x -= 0.05f;
-                if (inputHelper.isDown(GLFW_KEY_LEFT)) transform.position.x += 0.05f;
-                if (inputHelper.isDown(GLFW_KEY_UP)) transform.position.z += 0.05f;
-                if (inputHelper.isDown(GLFW_KEY_DOWN)) transform.position.z -= 0.05f;
+                //auto &transform = ecsCoordinator.GetComponent<TransformComponent>(cube);
+                //if (inputHelper.isDown(GLFW_KEY_RIGHT)) transform.position.x -= 0.05f;
+                //if (inputHelper.isDown(GLFW_KEY_LEFT)) transform.position.x += 0.05f;
+                //if (inputHelper.isDown(GLFW_KEY_UP)) transform.position.z += 0.05f;
+                //if (inputHelper.isDown(GLFW_KEY_DOWN)) transform.position.z -= 0.05f;
             },
     });
-    ecsCoordinator.AddComponent(cube, PhysicsComponent {
-        .rigidBody = physicsSystem->cubeBody(glm::vec3(1.0f)),
+     */
+}
+
+Entity App::addInstance(EvModel *model, rp3::BodyType bodyType, glm::vec3 scale, glm::vec3 position) {
+    Entity entity = ecsCoordinator.CreateEntity();
+    ecsCoordinator.AddComponent<ModelComponent>(entity, {
+        .model = model,
+        .scale = scale,
     });
+
+    ecsCoordinator.AddComponent<PhysicsComponent>(entity, {
+        .rigidBody = physicsSystem->createRigidBody(bodyType, position),
+    });
+
+    physicsSystem->addIntersectionBoxBody(entity, model->boundingBox * scale);
+    physicsSystem->linkModelComponent(entity);
+    return entity;
 }

@@ -10,6 +10,7 @@
 #include <tiny_obj_loader.h>
 #include "EvDevice.h"
 #include "EvTexture.h"
+#include "Primitives.h"
 
 
 struct Vertex {
@@ -49,11 +50,12 @@ private:
 
     void createVertexBuffer(const std::vector<Vertex>& vertices);
     void createIndexBuffer(const std::vector<uint32_t>& indices);
-    static void loadModel(const std::string& filename, std::vector<Vertex>* vertices, std::vector<uint32_t> *indices);
+    static void loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, BoundingBox *box);
 
 public:
     const EvTexture *texture = nullptr;
     std::vector<VkDescriptorSet> vkDescriptorSets;
+    BoundingBox boundingBox;
     EvModel(EvDevice &device, const std::string &objFile, const EvTexture *texture);
     ~EvModel();
 

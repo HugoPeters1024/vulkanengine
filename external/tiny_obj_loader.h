@@ -188,7 +188,7 @@ struct material_t {
   real_t shininess;
   real_t ior;       // index of refraction
   real_t dissolve;  // 1 == opaque; 0 == fully transparent
-  // illumination model (see http://www.fileformat.info/format/material/)
+  // illumination cubeModel (see http://www.fileformat.info/format/material/)
   int illum;
 
   int dummy;  // Suppress padding warning.
@@ -1970,7 +1970,7 @@ void LoadMtl(std::map<std::string, int> *material_map,
       continue;
     }
 
-    // illum model
+    // illum cubeModel
     if (0 == strncmp(token, "illum", 5) && IS_SPACE(token[5])) {
       token += 6;
       material.illum = parseInt(&token);

@@ -13,14 +13,9 @@
 #include <glm/ext.hpp>
 
 struct ModelComponent {
-    EvModel* model;
-};
-
-struct TransformComponent {
-    glm::vec3 position;
-    glm::vec3 rotation;
-    glm::vec3 scale{1,1,1};
-    glm::mat4 transform;
+    EvModel* model{};
+    glm::vec3 scale{1.0f, 1.0f, 1.0f};
+    glm::mat4 transform{glm::mat4(1.0f)};
 };
 
 class RenderSystem : public System

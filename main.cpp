@@ -1,7 +1,6 @@
-#include <iostream>
-#include "EvWindow.h"
-#include "EvDevice.h"
 #include "include/App.h"
+
+#define GLM_FORCE_SSE2
 
 int main() {
     App app{};

@@ -17,7 +17,7 @@ class App {
     EvWindow window = EvWindow(640, 480, "My app");
     EvDeviceInfo deviceInfo{};
     EvDevice device{deviceInfo, window};
-    std::unique_ptr<EvModel> model{};
+    std::unique_ptr<EvModel> cubeModel, lucyModel;
     float time = 0;
     Entity cube;
 
@@ -31,6 +31,7 @@ class App {
     void createECSSystems();
     void loadModel();
     void createECSWorld();
+    Entity addInstance(EvModel* model, rp3::BodyType bodyType, glm::vec3 scale, glm::vec3 position);
 
 public:
     App();
