@@ -1,3 +1,4 @@
+#include <EvCamera.h>
 #include "RenderSystem.h"
 
 RenderSystem::RenderSystem(EvDevice &device) : device(device) {
@@ -96,7 +97,7 @@ void RenderSystem::allocateCommandBuffers() {
     vkCheck(vkAllocateCommandBuffers(device.vkDevice, &createInfo, commandBuffers.data()));
 }
 
-void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
+void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera) const {
     const VkCommandBuffer& commandBuffer = commandBuffers[imageIndex];
     vkCheck(vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
@@ -144,11 +145,8 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex) const {
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     rastPipeline->bind(commandBuffer);
 
-    auto viewMatrix = glm::lookAt(glm::vec3(0,0,0), glm::vec3(0,0,1), glm::vec3(0,1,0));
-    auto projectionMatrix = glm::perspective(glm::radians(90.0f), device.window.getAspectRatio(), 0.1f, 100.0f);
-
     PushConstant push{
-        .camera = projectionMatrix * viewMatrix,
+        .camera = camera.getVPMatrix(device.window.getAspectRatio()),
     };
 
     for (const auto& entity : m_entities) {
@@ -177,7 +175,7 @@ void RenderSystem::recreateSwapchain() {
     createSwapchain();
 }
 
-void RenderSystem::Render() {
+void RenderSystem::Render(const EvCamera &camera) {
     uint32_t imageIndex;
     VkResult acquireImageResult = swapchain->acquireNextSwapchainImage(&imageIndex);
 
@@ -189,7 +187,7 @@ void RenderSystem::Render() {
     }
 
     swapchain->waitForImageReady(imageIndex);
-    recordCommandBuffer(imageIndex);
+    recordCommandBuffer(imageIndex, camera);
     VkResult presentResult = swapchain->presentCommandBuffer(commandBuffers[imageIndex], imageIndex);
 
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || device.window.wasResized) {

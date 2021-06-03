@@ -9,21 +9,23 @@
 
 #include <ecs/ecs.h>
 #include "RenderSystem.h"
-#include "InputSystem.h"
+#include "EvInputHelper.h"
 #include "PhysicsSystem.h"
 #include "EvTexture.h"
+#include "EvCamera.h"
 
 class App {
     EvWindow window = EvWindow(640, 480, "My app");
     EvDeviceInfo deviceInfo{};
     EvDevice device{deviceInfo, window};
+    EvCamera camera;
+    EvInputHelper inputHelper{window.glfwWindow};
     std::unique_ptr<EvModel> cubeModel, lucyModel;
     float time = 0;
     Entity cube;
 
     EcsCoordinator ecsCoordinator;
     std::shared_ptr<RenderSystem> renderSystem;
-    std::shared_ptr<InputSystem> inputSystem;
     std::shared_ptr<PhysicsSystem> physicsSystem;
 
     std::unique_ptr<EvTexture> texture, whiteTex;

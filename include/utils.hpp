@@ -81,3 +81,13 @@ namespace reactphysics3d {
         return Vector3(v.x, v.y, v.z);
     }
 };
+
+namespace glm {
+    inline vec3 sphericalToCartesian(float theta, float phi) {
+        return vec3(
+                cos(theta) * sin(phi),
+                cos(phi),
+                sin(theta) * sin(phi)
+        );
+    }
+}

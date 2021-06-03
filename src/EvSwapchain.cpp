@@ -62,7 +62,7 @@ void EvSwapchain::createSwapchain() {
     VkPresentModeKHR presentMode = chooseSwapPresentMode();
     extent = chooseSwapExtent();
 
-    uint imageCount = capabilities.minImageCount + 1;
+    uint imageCount = capabilities.minImageCount; // + 1;
 
     // Check that the specs allow the extra wiggle room
     if (capabilities.maxImageCount > 0) {

@@ -4,6 +4,7 @@
 #include <vector>
 #include "EvDevice.h"
 #include "EvModel.h"
+#include "EvCamera.h"
 #include "EvRastPipeline.h"
 #include "EvSwapchain.h"
 #include "ShaderTypes.h"
@@ -36,13 +37,13 @@ class RenderSystem : public System
     void createPipelineLayout();
     void createPipeline();
     void allocateCommandBuffers();
-    void recordCommandBuffer(uint32_t imageIndex) const;
+    void recordCommandBuffer(uint32_t imageIndex, const EvCamera& camera) const;
     void recreateSwapchain();
 public:
     RenderSystem(EvDevice& device);
     ~RenderSystem();
 
-    void Render();
+    void Render(const EvCamera &camera);
 
     Signature GetSignature() const override;
     std::unique_ptr<EvModel> createModel(const std::string& filename, const EvTexture* texture);
