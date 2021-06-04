@@ -34,11 +34,19 @@ target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/external/reactph
 target_link_libraries(vulkanray reactphysics3d)
 
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/glfw)
+link_directories(${CMAKE_SOURCE_DIR}/external/glfw)
+target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/external/glfw/include)
+target_link_libraries(vulkanray glfw)
+
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/imgui)
+link_directories(${CMAKE_SOURCE_DIR}/external/imgui)
+target_include_directories(vulkanray PRIVATE ${CMAKE_SOURCE_DIR}/external/imgui)
+target_link_libraries(vulkanray imgui)
+
 find_package(glm REQUIRED)
 message(STATUS "GLM included at ${GLM_INCLUDE_DIR}")
-
-find_package(glfw3 3.3.2 REQUIRED)
-target_link_libraries(vulkanray glfw)
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(vulkanray Vulkan::Vulkan)

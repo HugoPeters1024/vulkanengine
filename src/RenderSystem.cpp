@@ -8,6 +8,7 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     createPipelineLayout();
     createPipeline();
     allocateCommandBuffers();
+    createOverlay();
 }
 
 RenderSystem::~RenderSystem() {
@@ -97,6 +98,10 @@ void RenderSystem::allocateCommandBuffers() {
     vkCheck(vkAllocateCommandBuffers(device.vkDevice, &createInfo, commandBuffers.data()));
 }
 
+void RenderSystem::createOverlay() {
+    overlay = std::make_unique<EvOverlay>(device, *swapchain);
+}
+
 void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera) const {
     const VkCommandBuffer& commandBuffer = commandBuffers[imageIndex];
     vkCheck(vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
@@ -165,6 +170,7 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
         modelComp.model->draw(commandBuffer);
     }
 
+    overlay->Draw(commandBuffers[imageIndex]);
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
     vkCheck(vkEndCommandBuffer(commandBuffers[imageIndex]));
 }
@@ -176,6 +182,7 @@ void RenderSystem::recreateSwapchain() {
 }
 
 void RenderSystem::Render(const EvCamera &camera) {
+    overlay->NewFrame();
     uint32_t imageIndex;
     VkResult acquireImageResult = swapchain->acquireNextSwapchainImage(&imageIndex);
 
@@ -187,7 +194,10 @@ void RenderSystem::Render(const EvCamera &camera) {
     }
 
     swapchain->waitForImageReady(imageIndex);
+
+
     recordCommandBuffer(imageIndex, camera);
+
     VkResult presentResult = swapchain->presentCommandBuffer(commandBuffers[imageIndex], imageIndex);
 
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || device.window.wasResized) {
@@ -197,6 +207,7 @@ void RenderSystem::Render(const EvCamera &camera) {
     } else if (presentResult != VK_SUCCESS) {
         throw std::runtime_error("Failed to present swapchain image");
     }
+
 }
 
 Signature RenderSystem::GetSignature() const {
@@ -243,5 +254,6 @@ std::unique_ptr<EvModel> RenderSystem::createModel(const std::string &filename, 
 
     return ret;
 }
+
 
 

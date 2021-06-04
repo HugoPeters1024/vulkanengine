@@ -8,6 +8,7 @@
 #include "EvRastPipeline.h"
 #include "EvSwapchain.h"
 #include "ShaderTypes.h"
+#include "EvOverlay.h"
 #include <ecs/ecs.h>
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -30,6 +31,7 @@ class RenderSystem : public System
     EvRastPipelineInfo pipelineInfo{};
     std::unique_ptr<EvRastPipeline> rastPipeline{};
     VkDescriptorSetLayout vkDescriptorSetLayout;
+    std::unique_ptr<EvOverlay> overlay;
 
     void createShaderModules();
     void createSwapchain();
@@ -37,6 +39,7 @@ class RenderSystem : public System
     void createPipelineLayout();
     void createPipeline();
     void allocateCommandBuffers();
+    void createOverlay();
     void recordCommandBuffer(uint32_t imageIndex, const EvCamera& camera) const;
     void recreateSwapchain();
 public:

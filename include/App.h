@@ -13,6 +13,7 @@
 #include "PhysicsSystem.h"
 #include "EvTexture.h"
 #include "EvCamera.h"
+#include "EvOverlay.h"
 
 class App {
     EvWindow window = EvWindow(640, 480, "My app");
