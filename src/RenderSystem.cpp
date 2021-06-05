@@ -1,4 +1,3 @@
-#include <EvCamera.h>
 #include "RenderSystem.h"
 
 RenderSystem::RenderSystem(EvDevice &device) : device(device) {
