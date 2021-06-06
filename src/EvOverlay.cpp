@@ -72,7 +72,14 @@ void EvOverlay::NewFrame() {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow();
+
+    if (ImGui::Begin("Info")) {
+        ImGui::TextUnformatted("test");
+        ImGui::Text("fps: %f", uiInfo.fps);
+        ImGui::SliderFloat("gravity", &uiInfo.gravity, -10.0f, 10.0f);
+    }
+    ImGui::End();
+
     ImGui::Render();
 }
 

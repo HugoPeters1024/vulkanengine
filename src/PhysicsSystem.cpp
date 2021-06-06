@@ -67,3 +67,7 @@ void PhysicsSystem::setAngularVelocity(Entity entity, glm::vec3 eulerAngles) {
     auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
     physics.rigidBody->setAngularVelocity(rp3::mkVector3(eulerAngles));
 }
+
+void PhysicsSystem::setWorldGravity(float gravity) {
+    world->setGravity(rp3::Vector3(0, gravity, 0));
+}

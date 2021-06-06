@@ -6,6 +6,11 @@
 #include "EvDevice.h"
 #include "EvSwapchain.h"
 
+struct UIInfo {
+    float fps = 0;
+    float gravity;
+};
+
 class EvOverlay {
 private:
     EvDevice& device;
@@ -15,6 +20,7 @@ private:
     void initImGui(const EvSwapchain &swapchain);
 
 public:
+    UIInfo uiInfo;
     EvOverlay(EvDevice &device, const EvSwapchain &swapchain);
     ~EvOverlay();
 

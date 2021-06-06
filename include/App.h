@@ -16,14 +16,13 @@
 #include "EvOverlay.h"
 
 class App {
-    EvWindow window = EvWindow(640, 480, "My app");
-    EvDeviceInfo deviceInfo{};
-    EvDevice device{deviceInfo, window};
+    EvWindow window;
+    EvDevice device;
+    EvInputHelper inputHelper;
     EvCamera camera;
-    EvInputHelper inputHelper{window.glfwWindow};
+    std::unique_ptr<EvOverlay> overlay;
     std::unique_ptr<EvModel> cubeModel, lucyModel;
     float time = 0;
-    Entity cube;
 
     EcsCoordinator ecsCoordinator;
     std::shared_ptr<RenderSystem> renderSystem;
@@ -32,6 +31,7 @@ class App {
     std::unique_ptr<EvTexture> texture, whiteTex;
 
     void createECSSystems();
+    void createOverlay();
     void loadModel();
     void createECSWorld();
     Entity addInstance(EvModel* model, rp3::BodyType bodyType, glm::vec3 scale, glm::vec3 position);

@@ -7,7 +7,6 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     createPipelineLayout();
     createPipeline();
     allocateCommandBuffers();
-    createOverlay();
 }
 
 RenderSystem::~RenderSystem() {
@@ -97,11 +96,7 @@ void RenderSystem::allocateCommandBuffers() {
     vkCheck(vkAllocateCommandBuffers(device.vkDevice, &createInfo, commandBuffers.data()));
 }
 
-void RenderSystem::createOverlay() {
-    overlay = std::make_unique<EvOverlay>(device, *swapchain);
-}
-
-void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera) const {
+void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera, EvOverlay *overlay) const {
     const VkCommandBuffer& commandBuffer = commandBuffers[imageIndex];
     vkCheck(vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
@@ -169,9 +164,10 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
         modelComp.model->draw(commandBuffer);
     }
 
-    overlay->Draw(commandBuffers[imageIndex]);
-    vkCmdEndRenderPass(commandBuffers[imageIndex]);
-    vkCheck(vkEndCommandBuffer(commandBuffers[imageIndex]));
+    if (overlay)
+        overlay->Draw(commandBuffer);
+    vkCmdEndRenderPass(commandBuffer);
+    vkCheck(vkEndCommandBuffer(commandBuffer));
 }
 
 void RenderSystem::recreateSwapchain() {
@@ -180,7 +176,7 @@ void RenderSystem::recreateSwapchain() {
     createSwapchain();
 }
 
-void RenderSystem::Render(const EvCamera &camera) {
+void RenderSystem::Render(const EvCamera &camera, EvOverlay* overlay) {
     overlay->NewFrame();
     uint32_t imageIndex;
     VkResult acquireImageResult = swapchain->acquireNextSwapchainImage(&imageIndex);
@@ -195,7 +191,7 @@ void RenderSystem::Render(const EvCamera &camera) {
     swapchain->waitForImageReady(imageIndex);
 
 
-    recordCommandBuffer(imageIndex, camera);
+    recordCommandBuffer(imageIndex, camera, overlay);
 
     VkResult presentResult = swapchain->presentCommandBuffer(commandBuffers[imageIndex], imageIndex);
 

@@ -20,6 +20,7 @@ struct ModelComponent {
     glm::mat4 transform{glm::mat4(1.0f)};
 };
 
+
 class RenderSystem : public System
 {
     EvDevice& device;
@@ -31,7 +32,6 @@ class RenderSystem : public System
     EvRastPipelineInfo pipelineInfo{};
     std::unique_ptr<EvRastPipeline> rastPipeline{};
     VkDescriptorSetLayout vkDescriptorSetLayout;
-    std::unique_ptr<EvOverlay> overlay;
 
     void createShaderModules();
     void createSwapchain();
@@ -39,15 +39,16 @@ class RenderSystem : public System
     void createPipelineLayout();
     void createPipeline();
     void allocateCommandBuffers();
-    void createOverlay();
-    void recordCommandBuffer(uint32_t imageIndex, const EvCamera& camera) const;
+    void recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera, EvOverlay *overlay) const;
     void recreateSwapchain();
+
 public:
     RenderSystem(EvDevice& device);
     ~RenderSystem();
 
-    void Render(const EvCamera &camera);
+    void Render(const EvCamera &camera, EvOverlay* overlay);
 
     Signature GetSignature() const override;
+    inline EvSwapchain* getSwapchain() const { assert(swapchain); return swapchain.get(); }
     std::unique_ptr<EvModel> createModel(const std::string& filename, const EvTexture* texture);
 };

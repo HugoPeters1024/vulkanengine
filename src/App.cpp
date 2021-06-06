@@ -1,19 +1,34 @@
 #include "App.h"
 
-App::App() {
+EvDeviceInfo deviceInfo {
+};
+
+App::App()
+    : window(1280, 768, "Hello world")
+    , device(deviceInfo, window)
+    , inputHelper(window.glfwWindow)
+{
+    camera = EvCamera {
+        .fov = 90,
+    };
     createECSSystems();
+    createOverlay();
     loadModel();
     createECSWorld();
 }
 
 void App::Run() {
     while (!window.shouldClose()) {
+        double startFrame = glfwGetTime();
         window.processEvents();
         inputHelper.swapBuffers();
         camera.handleInput(inputHelper);
         physicsSystem->Update();
-        renderSystem->Render(camera);
+        renderSystem->Render(camera, overlay.get());
         time += 0.01f;
+        double timePerFrame = glfwGetTime() - startFrame;
+        overlay->uiInfo.fps = static_cast<float>(1.0f / timePerFrame);
+        physicsSystem->setWorldGravity(overlay->uiInfo.gravity);
     }
 
     printf("Flushing GPU before shutdown...\n");
@@ -59,4 +74,8 @@ Entity App::addInstance(EvModel *model, rp3::BodyType bodyType, glm::vec3 scale,
     physicsSystem->addIntersectionBoxBody(entity, model->boundingBox * scale);
     physicsSystem->linkModelComponent(entity);
     return entity;
+}
+
+void App::createOverlay() {
+    overlay = std::make_unique<EvOverlay>(device, *renderSystem->getSwapchain());
 }
