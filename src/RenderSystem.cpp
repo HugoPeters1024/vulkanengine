@@ -6,10 +6,15 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     createDescriptorSetLayout();
     createPipelineLayout();
     createPipeline();
+    createGBuffer();
     allocateCommandBuffers();
 }
 
 RenderSystem::~RenderSystem() {
+    printf("Destroying the gbuffer framebuffer");
+    gbuffer.albedo.destroy(device);
+    gbuffer.destroy(device);
+
     printf("Destroying descriptor set layout\n");
     vkDestroyDescriptorSetLayout(device.vkDevice, vkDescriptorSetLayout, nullptr);
 
@@ -61,6 +66,89 @@ void RenderSystem::createPipeline() {
     pipelineInfo.swapchainImages = static_cast<uint32>(swapchain->vkImages.size());
 
     rastPipeline = std::make_unique<EvRastPipeline>(device, pipelineInfo);
+}
+
+void RenderSystem::createGBuffer() {
+    gbuffer.width = swapchain->extent.width;
+    gbuffer.height = swapchain->extent.height;
+    device.createAttachment(VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, swapchain->extent.width, swapchain->extent.height, &gbuffer.albedo);
+
+    std::array<VkAttachmentDescription, 1> attachmentDescriptions{};
+
+    for (size_t i = 0; i < attachmentDescriptions.size(); i++) {
+        attachmentDescriptions[i].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachmentDescriptions[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        attachmentDescriptions[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachmentDescriptions[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachmentDescriptions[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        // TODO: not correct for the depth buffer
+        attachmentDescriptions[i].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+
+    attachmentDescriptions[0].format = gbuffer.albedo.format;
+
+    std::vector<VkAttachmentReference> colorReferences {
+        VkAttachmentReference {
+            .attachment = 0,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        }
+    };
+
+    VkSubpassDescription subpass {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = static_cast<uint32_t>(colorReferences.size()),
+        .pColorAttachments = colorReferences.data(),
+        // TODO
+        .pDepthStencilAttachment = nullptr,
+    };
+
+    std::array<VkSubpassDependency, 2> dependencies {
+        VkSubpassDependency {
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0,
+            .srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+        },
+        VkSubpassDependency {
+            .srcSubpass = 0,
+            .dstSubpass = VK_SUBPASS_EXTERNAL,
+            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+        }
+    };
+
+    VkRenderPassCreateInfo renderpassInfo {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size()),
+        .pAttachments = attachmentDescriptions.data(),
+        .subpassCount = 1,
+        .pSubpasses = &subpass,
+        .dependencyCount = static_cast<uint32_t>(dependencies.size()),
+        .pDependencies = dependencies.data(),
+    };
+
+    vkCheck(vkCreateRenderPass(device.vkDevice, &renderpassInfo, nullptr, &gbuffer.renderPass));
+
+    std::array<VkImageView, 1> attachments{};
+    attachments[0] = gbuffer.albedo.view;
+
+    VkFramebufferCreateInfo framebufferInfo {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = gbuffer.renderPass,
+        .attachmentCount = static_cast<uint32_t>(attachments.size()),
+        .pAttachments = attachments.data(),
+        .width = gbuffer.width,
+        .height= gbuffer.height,
+        .layers = 1,
+    };
+
+    vkCheck(vkCreateFramebuffer(device.vkDevice, &framebufferInfo, nullptr, &gbuffer.frameBuffer));
 }
 
 void RenderSystem::createDescriptorSetLayout() {

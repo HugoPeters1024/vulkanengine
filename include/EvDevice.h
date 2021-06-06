@@ -9,11 +9,30 @@
 #include "EvWindow.h"
 #include <vk_mem_alloc.hpp>
 
+class EvDevice;
+
 struct EvDeviceInfo {
     std::set<const char*> validationLayers;
     std::set<const char*> instanceExtensions;
     std::set<const char*> deviceExtensions;
     uint32_t textureDescriptorSetCount = 0;
+};
+
+struct EvFrameBufferAttachment : NoCopy {
+    VkImage image;
+    VmaAllocation imageMemory;
+    VkImageView view;
+    VkFormat format;
+
+    void destroy(EvDevice& device);
+};
+
+struct EvFrameBuffer : NoCopy {
+    uint32_t width, height;
+    VkFramebuffer frameBuffer;
+    VkRenderPass renderPass;
+
+    void destroy(EvDevice& device);
 };
 
 class EvDevice : NoCopy {
@@ -58,6 +77,7 @@ public:
     void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
                      VkSampleCountFlagBits numSamples, VkImage *image, VmaAllocation *memory);
     void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView);
+    void createAttachment(VkFormat format, VkImageUsageFlagBits usage, uint32_t width, uint32_t height, EvFrameBufferAttachment* attachment);
     SwapchainSupportDetails getSwapchainSupportDetails() const;
     VkShaderModule createShaderModule(const char* filepath) const;
     void createHostBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buffer, VmaAllocation* bufferMemory);

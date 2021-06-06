@@ -222,9 +222,9 @@ bool EvDevice::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
     return deviceFeatures.samplerAnisotropy;
 }
 
-void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-                           VkSampleCountFlagBits numSamples, VkImage *image, VmaAllocation *memory) {
-
+void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling,
+                           VkImageUsageFlags usage, VkSampleCountFlagBits numSamples, VkImage *image,
+                           VmaAllocation *memory) {
     VkImageCreateInfo imageInfo {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
@@ -267,6 +267,28 @@ void EvDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlag
     };
 
     vkCheck(vkCreateImageView(vkDevice, &viewInfo, nullptr, imageView));
+}
+
+void EvDevice::createAttachment(VkFormat format, VkImageUsageFlagBits usage, uint32_t width, uint32_t height, EvFrameBufferAttachment *attachment) {
+    VkImageAspectFlags aspectMask;
+    VkImageLayout imageLayout;
+
+    attachment->format = format;
+
+    if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+        aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+    else if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    }
+    else {
+        throw std::range_error("Given usage not implemented");
+    }
+
+    createImage(width, height, format, VK_IMAGE_TILING_OPTIMAL, usage | VK_IMAGE_USAGE_SAMPLED_BIT, VK_SAMPLE_COUNT_1_BIT, &attachment->image, &attachment->imageMemory);
+    createImageView(attachment->image, format, aspectMask, &attachment->view);
 }
 
 SwapchainSupportDetails EvDevice::getSwapchainSupportDetails() const {
@@ -479,3 +501,12 @@ void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
     endSingleTimeCommands(cmdBuffer);
 }
 
+void EvFrameBufferAttachment::destroy(EvDevice &device) {
+    vmaDestroyImage(device.vmaAllocator, image, imageMemory);
+    vkDestroyImageView(device.vkDevice, view, nullptr);
+}
+
+void EvFrameBuffer::destroy(EvDevice &device) {
+    vkDestroyFramebuffer(device.vkDevice, frameBuffer, nullptr);
+    vkDestroyRenderPass(device.vkDevice, renderPass, nullptr);
+}

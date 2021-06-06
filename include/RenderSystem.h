@@ -20,7 +20,6 @@ struct ModelComponent {
     glm::mat4 transform{glm::mat4(1.0f)};
 };
 
-
 class RenderSystem : public System
 {
     EvDevice& device;
@@ -33,11 +32,16 @@ class RenderSystem : public System
     std::unique_ptr<EvRastPipeline> rastPipeline{};
     VkDescriptorSetLayout vkDescriptorSetLayout;
 
+    struct GBuffer : public EvFrameBuffer {
+        EvFrameBufferAttachment albedo;
+    } gbuffer;
+
     void createShaderModules();
     void createSwapchain();
     void createDescriptorSetLayout();
     void createPipelineLayout();
     void createPipeline();
+    void createGBuffer();
     void allocateCommandBuffers();
     void recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera, EvOverlay *overlay) const;
     void recreateSwapchain();
