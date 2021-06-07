@@ -269,7 +269,7 @@ void EvDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlag
     vkCheck(vkCreateImageView(vkDevice, &viewInfo, nullptr, imageView));
 }
 
-void EvDevice::createAttachment(VkFormat format, VkImageUsageFlagBits usage, uint32_t width, uint32_t height, EvFrameBufferAttachment *attachment) {
+void EvDevice::createAttachment(VkFormat format, VkImageUsageFlagBits usage, VkSampleCountFlagBits samples, uint32_t width, uint32_t height, EvFrameBufferAttachment *attachment) {
     VkImageAspectFlags aspectMask;
     VkImageLayout imageLayout;
 
@@ -280,14 +280,14 @@ void EvDevice::createAttachment(VkFormat format, VkImageUsageFlagBits usage, uin
         imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
     else if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
         imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
     else {
         throw std::range_error("Given usage not implemented");
     }
 
-    createImage(width, height, format, VK_IMAGE_TILING_OPTIMAL, usage | VK_IMAGE_USAGE_SAMPLED_BIT, VK_SAMPLE_COUNT_1_BIT, &attachment->image, &attachment->imageMemory);
+    createImage(width, height, format, VK_IMAGE_TILING_OPTIMAL, usage | VK_IMAGE_USAGE_SAMPLED_BIT, samples, &attachment->image, &attachment->imageMemory);
     createImageView(attachment->image, format, aspectMask, &attachment->view);
 }
 
@@ -507,6 +507,6 @@ void EvFrameBufferAttachment::destroy(EvDevice &device) {
 }
 
 void EvFrameBuffer::destroy(EvDevice &device) {
-    vkDestroyFramebuffer(device.vkDevice, frameBuffer, nullptr);
-    vkDestroyRenderPass(device.vkDevice, renderPass, nullptr);
+    vkDestroyFramebuffer(device.vkDevice, vkFrameBuffer, nullptr);
+    vkDestroyRenderPass(device.vkDevice, vkRenderPass, nullptr);
 }

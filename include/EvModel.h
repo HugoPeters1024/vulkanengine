@@ -13,18 +13,6 @@
 #include "Primitives.h"
 
 
-struct Vertex {
-    glm::vec3 position;
-    glm::vec2 uv;
-    glm::vec3 normal;
-
-    bool operator ==(const Vertex& o) const {
-        return position == o.position && uv == o.uv && normal == o.normal;
-    }
-
-    static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
-    static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
-};
 
 namespace std {
     template<>

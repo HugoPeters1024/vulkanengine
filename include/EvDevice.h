@@ -29,10 +29,10 @@ struct EvFrameBufferAttachment : NoCopy {
 
 struct EvFrameBuffer : NoCopy {
     uint32_t width, height;
-    VkFramebuffer frameBuffer;
-    VkRenderPass renderPass;
+    VkFramebuffer vkFrameBuffer;
+    VkRenderPass vkRenderPass;
 
-    void destroy(EvDevice& device);
+    virtual void destroy(EvDevice& device);
 };
 
 class EvDevice : NoCopy {
@@ -77,7 +77,7 @@ public:
     void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
                      VkSampleCountFlagBits numSamples, VkImage *image, VmaAllocation *memory);
     void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView);
-    void createAttachment(VkFormat format, VkImageUsageFlagBits usage, uint32_t width, uint32_t height, EvFrameBufferAttachment* attachment);
+    void createAttachment(VkFormat format, VkImageUsageFlagBits usage, VkSampleCountFlagBits samples, uint32_t width, uint32_t height, EvFrameBufferAttachment* attachment);
     SwapchainSupportDetails getSwapchainSupportDetails() const;
     VkShaderModule createShaderModule(const char* filepath) const;
     void createHostBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buffer, VmaAllocation* bufferMemory);

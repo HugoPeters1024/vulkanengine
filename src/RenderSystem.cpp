@@ -7,13 +7,28 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     createPipelineLayout();
     createPipeline();
     createGBuffer();
+    createGBufferDescriptorSetLayout();
+    createGBufferPipeline();
+    allocateGBufferCommandBuffer();
     allocateCommandBuffers();
 }
 
 RenderSystem::~RenderSystem() {
-    printf("Destroying the gbuffer framebuffer");
-    gbuffer.albedo.destroy(device);
-    gbuffer.destroy(device);
+    printf("Destroying the gbuffer shader modules\n");
+    vkDestroyShaderModule(device.vkDevice, gpass.vertShader, nullptr);
+    vkDestroyShaderModule(device.vkDevice, gpass.fragShader, nullptr);
+
+    printf("Destroying the gbuffer framebuffer\n");
+    gpass.framebuffer.destroy(device);
+
+    printf("Destroying the gbuffer descriptor layout\n");
+    vkDestroyDescriptorSetLayout(device.vkDevice, gpass.descriptorSetLayout, nullptr);
+
+    printf("Destroying the gbuffer pipeline\n");
+    vkDestroyPipeline(device.vkDevice, gpass.pipeline, nullptr);
+    vkDestroyPipelineLayout(device.vkDevice, gpass.pipelineLayout, nullptr);
+
+
 
     printf("Destroying descriptor set layout\n");
     vkDestroyDescriptorSetLayout(device.vkDevice, vkDescriptorSetLayout, nullptr);
@@ -22,7 +37,7 @@ RenderSystem::~RenderSystem() {
     vkDestroyShaderModule(device.vkDevice, vertShaderModule, nullptr);
     vkDestroyShaderModule(device.vkDevice, fragShaderModule, nullptr);
 
-    printf("Destroying pipeline pipelineLayout\n");
+    printf("Destroying pipeline layout\n");
     vkDestroyPipelineLayout(device.vkDevice, vkPipelineLayout, nullptr);
 }
 
@@ -59,6 +74,8 @@ void RenderSystem::createPipelineLayout() {
 }
 
 void RenderSystem::createPipeline() {
+
+    EvRastPipelineInfo pipelineInfo;
     EvRastPipeline::defaultRastPipelineInfo(vertShaderModule, fragShaderModule, device.msaaSamples, &pipelineInfo);
     pipelineInfo.renderPass = swapchain->vkRenderPass;
     pipelineInfo.pipelineLayout = vkPipelineLayout;
@@ -69,37 +86,49 @@ void RenderSystem::createPipeline() {
 }
 
 void RenderSystem::createGBuffer() {
-    gbuffer.width = swapchain->extent.width;
-    gbuffer.height = swapchain->extent.height;
-    device.createAttachment(VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, swapchain->extent.width, swapchain->extent.height, &gbuffer.albedo);
+    gpass.framebuffer.width = swapchain->extent.width;
+    gpass.framebuffer.height = swapchain->extent.height;
+    device.createAttachment(VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, gpass.framebuffer.width, gpass.framebuffer.height, &gpass.framebuffer.albedo);
+    device.createAttachment(device.findDepthFormat(), VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, gpass.framebuffer.width, gpass.framebuffer.height, &gpass.framebuffer.depth);
 
-    std::array<VkAttachmentDescription, 1> attachmentDescriptions{};
+    VkAttachmentDescription defaultDescription {
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    };
 
-    for (size_t i = 0; i < attachmentDescriptions.size(); i++) {
-        attachmentDescriptions[i].samples = VK_SAMPLE_COUNT_1_BIT;
-        attachmentDescriptions[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachmentDescriptions[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachmentDescriptions[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachmentDescriptions[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        // TODO: not correct for the depth buffer
-        attachmentDescriptions[i].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    }
+    VkAttachmentDescription albedoDescription = defaultDescription;
+    albedoDescription.format = gpass.framebuffer.albedo.format;
+    albedoDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    attachmentDescriptions[0].format = gbuffer.albedo.format;
+    VkAttachmentDescription depthDescription = defaultDescription;
+    depthDescription.format = gpass.framebuffer.depth.format;
+    depthDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    std::vector<VkAttachmentReference> colorReferences {
+    std::array<VkAttachmentDescription, 2> attachmentDescriptions{
+        albedoDescription,
+        depthDescription,
+    };
+
+    std::array<VkAttachmentReference, 1> colorReferences {
         VkAttachmentReference {
             .attachment = 0,
             .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         }
     };
 
+    VkAttachmentReference depthAttachmentRef {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
+
     VkSubpassDescription subpass {
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
         .colorAttachmentCount = static_cast<uint32_t>(colorReferences.size()),
         .pColorAttachments = colorReferences.data(),
-        // TODO
-        .pDepthStencilAttachment = nullptr,
+        .pDepthStencilAttachment = &depthAttachmentRef,
     };
 
     std::array<VkSubpassDependency, 2> dependencies {
@@ -133,23 +162,184 @@ void RenderSystem::createGBuffer() {
         .pDependencies = dependencies.data(),
     };
 
-    vkCheck(vkCreateRenderPass(device.vkDevice, &renderpassInfo, nullptr, &gbuffer.renderPass));
+    vkCheck(vkCreateRenderPass(device.vkDevice, &renderpassInfo, nullptr, &gpass.framebuffer.vkRenderPass));
 
-    std::array<VkImageView, 1> attachments{};
-    attachments[0] = gbuffer.albedo.view;
+    std::array<VkImageView, 2> attachments{};
+    attachments[0] = gpass.framebuffer.albedo.view;
+    attachments[1] = gpass.framebuffer.depth.view;
 
     VkFramebufferCreateInfo framebufferInfo {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = gbuffer.renderPass,
+        .renderPass = gpass.framebuffer.vkRenderPass,
         .attachmentCount = static_cast<uint32_t>(attachments.size()),
         .pAttachments = attachments.data(),
-        .width = gbuffer.width,
-        .height= gbuffer.height,
+        .width = gpass.framebuffer.width,
+        .height= gpass.framebuffer.height,
         .layers = 1,
     };
 
-    vkCheck(vkCreateFramebuffer(device.vkDevice, &framebufferInfo, nullptr, &gbuffer.frameBuffer));
+    vkCheck(vkCreateFramebuffer(device.vkDevice, &framebufferInfo, nullptr, &gpass.framebuffer.vkFrameBuffer));
 }
+
+void RenderSystem::createGBufferDescriptorSetLayout() {
+    VkDescriptorSetLayoutBinding textureBinding {
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pImmutableSamplers = nullptr,
+    };
+
+    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {textureBinding};
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = static_cast<uint32_t>(bindings.size()),
+            .pBindings = bindings.data(),
+    };
+
+    vkCheck(vkCreateDescriptorSetLayout(device.vkDevice, &layoutInfo, nullptr, &gpass.descriptorSetLayout));
+}
+
+void RenderSystem::createGBufferPipeline() {
+    VkPushConstantRange pushConstantRange{
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            .offset = 0,
+            .size = sizeof(PushConstant),
+    };
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &gpass.descriptorSetLayout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &pushConstantRange,
+    };
+
+    vkCheck(vkCreatePipelineLayout(device.vkDevice, &pipelineLayoutInfo, nullptr, &gpass.pipelineLayout));
+
+    gpass.vertShader = device.createShaderModule("assets/shaders_bin/gpass.vert.spv");
+    gpass.fragShader = device.createShaderModule("assets/shaders_bin/gpass.frag.spv");
+
+    auto inputAssembly = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
+    auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+    auto blendAttachment = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
+    auto colorBlend = vks::initializers::pipelineColorBlendStateCreateInfo(1, &blendAttachment);
+    auto depthStencil = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
+    auto viewport = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
+    auto multisample = vks::initializers::pipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
+    std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    auto dynamicState = vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables);
+    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages {
+        vks::initializers::pipelineShaderStageCreateInfo(gpass.vertShader, VK_SHADER_STAGE_VERTEX_BIT),
+        vks::initializers::pipelineShaderStageCreateInfo(gpass.fragShader, VK_SHADER_STAGE_FRAGMENT_BIT),
+    };
+
+    auto bindingDescriptions= Vertex::getBindingDescriptions();
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    auto vertexInput = vks::initializers::pipelineVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions);
+
+    VkGraphicsPipelineCreateInfo pipelineInfo {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = static_cast<uint32_t>(shaderStages.size()),
+        .pStages = shaderStages.data(),
+        .pVertexInputState = &vertexInput,
+        .pInputAssemblyState = &inputAssembly,
+        .pViewportState = &viewport,
+        .pRasterizationState = &rasterization,
+        .pMultisampleState = &multisample,
+        .pDepthStencilState = &depthStencil,
+        .pColorBlendState = &colorBlend,
+        .pDynamicState = &dynamicState,
+        .layout = gpass.pipelineLayout,
+        .renderPass = gpass.framebuffer.vkRenderPass,
+        .subpass = 0,
+    };
+
+    vkCheck(vkCreateGraphicsPipelines(device.vkDevice, nullptr, 1, &pipelineInfo, nullptr, &gpass.pipeline));
+}
+
+void RenderSystem::allocateGBufferCommandBuffer() {
+    VkCommandBufferAllocateInfo createInfo {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = device.vkCommandPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+    };
+
+    vkCheck(vkAllocateCommandBuffers(device.vkDevice, &createInfo, &gpass.commandBuffer));
+}
+
+void RenderSystem::recordGBufferCommands(const EvCamera &camera) {
+    const VkCommandBuffer& commandBuffer = gpass.commandBuffer;
+    vkCheck(vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
+    VkCommandBufferBeginInfo beginInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+    vkCheck(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+    std::array<VkClearValue, 2> clearValues {};
+    clearValues[0] = {
+            .color = {0.0f, 0.0f, 0.0f, 0.0f},
+    };
+    clearValues[1] = {
+            .depthStencil = {1.0f, 0},
+    };
+
+    VkRenderPassBeginInfo renderPassInfo {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = gpass.framebuffer.vkRenderPass,
+            .framebuffer = gpass.framebuffer.vkFrameBuffer,
+            .renderArea = {
+                    .offset = {0,0},
+                    .extent = {gpass.framebuffer.width, gpass.framebuffer.height},
+            },
+            .clearValueCount = static_cast<uint32_t>(clearValues.size()),
+            .pClearValues = clearValues.data(),
+    };
+    VkViewport viewport {
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(gpass.framebuffer.width),
+            .height = static_cast<float>(gpass.framebuffer.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+    };
+    VkRect2D scissor{{0,0}, {gpass.framebuffer.width, gpass.framebuffer.height}};
+
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gpass.pipeline);
+
+    PushConstant push{
+            .camera = camera.getVPMatrix(device.window.getAspectRatio()),
+    };
+
+    for (const auto& entity : m_entities) {
+        auto& modelComp = m_coordinator->GetComponent<ModelComponent>(entity);
+        auto scaleMatrix = glm::scale(glm::mat4(1.0f), modelComp.scale);
+        push.mvp = modelComp.transform * scaleMatrix;
+        vkCmdPushConstants(
+                commandBuffer,
+                vkPipelineLayout,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+                sizeof(push),
+                &push);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipelineLayout, 0, 1, &modelComp.model->vkDescriptorSets[0], 0, nullptr);
+        modelComp.model->bind(commandBuffer);
+        modelComp.model->draw(commandBuffer);
+    }
+
+    vkCmdEndRenderPass(commandBuffer);
+    vkCheck(vkEndCommandBuffer(commandBuffer));
+
+}
+
 
 void RenderSystem::createDescriptorSetLayout() {
     VkDescriptorSetLayoutBinding textureBinding {
@@ -261,7 +451,9 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
 void RenderSystem::recreateSwapchain() {
     vkCheck(vkDeviceWaitIdle(device.vkDevice));
     device.window.waitForEvent();
+    gpass.framebuffer.destroy(device);
     createSwapchain();
+    createGBuffer();
 }
 
 void RenderSystem::Render(const EvCamera &camera, EvOverlay* overlay) {
@@ -290,6 +482,18 @@ void RenderSystem::Render(const EvCamera &camera, EvOverlay* overlay) {
     } else if (presentResult != VK_SUCCESS) {
         throw std::runtime_error("Failed to present swapchain image");
     }
+
+    vkDeviceWaitIdle(device.vkDevice);
+    VkSubmitInfo submitInfo {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &gpass.commandBuffer,
+    };
+
+    recordGBufferCommands(camera);
+    vkCheck(vkQueueSubmit(device.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+
+    vkDeviceWaitIdle(device.vkDevice);
 
 }
 

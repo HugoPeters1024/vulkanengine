@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <VulkanInitializers.hpp>
 #include <vector>
 #include "EvDevice.h"
 #include "EvModel.h"
@@ -17,7 +18,7 @@
 struct ModelComponent {
     EvModel* model{};
     glm::vec3 scale{1.0f, 1.0f, 1.0f};
-    glm::mat4 transform{glm::mat4(1.0f)};
+    glm::mat4 transform{1.0f};
 };
 
 class RenderSystem : public System
@@ -28,13 +29,27 @@ class RenderSystem : public System
     VkPipelineLayout vkPipelineLayout;
     VkShaderModule vertShaderModule;
     VkShaderModule fragShaderModule;
-    EvRastPipelineInfo pipelineInfo{};
     std::unique_ptr<EvRastPipeline> rastPipeline{};
     VkDescriptorSetLayout vkDescriptorSetLayout;
 
-    struct GBuffer : public EvFrameBuffer {
-        EvFrameBufferAttachment albedo;
-    } gbuffer;
+    struct {
+        struct GBuffer : public EvFrameBuffer {
+            EvFrameBufferAttachment albedo;
+            EvFrameBufferAttachment depth;
+
+            virtual void destroy(EvDevice& device) override {
+                albedo.destroy(device);
+                depth.destroy(device);
+                EvFrameBuffer::destroy(device);
+            }
+        } framebuffer;
+        VkShaderModule vertShader;
+        VkShaderModule fragShader;
+        VkPipeline pipeline;
+        VkPipelineLayout pipelineLayout;
+        VkDescriptorSetLayout descriptorSetLayout;
+        VkCommandBuffer commandBuffer;
+    } gpass;
 
     void createShaderModules();
     void createSwapchain();
@@ -42,6 +57,10 @@ class RenderSystem : public System
     void createPipelineLayout();
     void createPipeline();
     void createGBuffer();
+    void createGBufferDescriptorSetLayout();
+    void createGBufferPipeline();
+    void allocateGBufferCommandBuffer();
+    void recordGBufferCommands(const EvCamera &camera);
     void allocateCommandBuffers();
     void recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera, EvOverlay *overlay) const;
     void recreateSwapchain();
