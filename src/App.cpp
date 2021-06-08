@@ -18,7 +18,9 @@ App::App()
 }
 
 void App::Run() {
+    uint tick = 0;
     while (!window.shouldClose()) {
+        tick++;
         double startFrame = glfwGetTime();
         window.processEvents();
         inputHelper.swapBuffers();
@@ -29,6 +31,10 @@ void App::Run() {
         double timePerFrame = glfwGetTime() - startFrame;
         overlay->uiInfo.fps = static_cast<float>(1.0f / timePerFrame);
         physicsSystem->setWorldGravity(overlay->uiInfo.gravity);
+
+        if (tick % 60 == 0) {
+            addInstance(cubeModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6));
+        }
     }
 
     printf("Flushing GPU before shutdown...\n");

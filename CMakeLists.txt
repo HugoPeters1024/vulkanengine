@@ -21,6 +21,9 @@ shader("shader.frag")
 shader("gpass.vert")
 shader("gpass.frag")
 
+shader("compose.vert")
+shader("compose.frag")
+
 add_executable(vulkanray main.cpp ${src})
 set_target_properties(vulkanray PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/include/)

@@ -1,10 +1,11 @@
 #version 460
 
-
+vec2 positions[3] = vec2[](
+    vec2(-1.0f, -1.0f),
+    vec2(3.0f, -1.0f),
+    vec2(-1.0f, 3.0f)
+);
 
 void main() {
-    gl_Position = lol.camera * lol.mvp * vec4(vPosition, 1.0f);
-    uv = vUv;
-    normal = normalize((lol.mvp * vec4(vNormal, 0.0f)).xyz);
-    position = (lol.mvp * vec4(vPosition, 1)).xyz;
+    gl_Position = vec4(positions[gl_VertexIndex], 0.0f, 1.0f);
 }

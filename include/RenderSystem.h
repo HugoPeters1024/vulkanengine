@@ -34,11 +34,11 @@ class RenderSystem : public System
 
     struct {
         struct GBuffer : public EvFrameBuffer {
-            EvFrameBufferAttachment albedo;
+            EvFrameBufferAttachment normal;
             EvFrameBufferAttachment depth;
 
             virtual void destroy(EvDevice& device) override {
-                albedo.destroy(device);
+                normal.destroy(device);
                 depth.destroy(device);
                 EvFrameBuffer::destroy(device);
             }
@@ -51,16 +51,47 @@ class RenderSystem : public System
         VkCommandBuffer commandBuffer;
     } gpass;
 
+    struct {
+        struct ComposeBuffer : public EvFrameBuffer {
+            EvFrameBufferAttachment composed;
+
+            virtual void destroy(EvDevice& device) override {
+                composed.destroy(device);
+                EvFrameBuffer::destroy(device);
+            }
+        } framebuffer;
+        VkShaderModule vertShader;
+        VkShaderModule fragShader;
+        VkPipeline pipeline;
+        VkPipelineLayout pipelineLayout;
+        VkDescriptorSetLayout descriptorSetLayout;
+        VkDescriptorSet descriptorSet;
+        VkCommandBuffer commandBuffer;
+
+        VkSampler normalSampler;
+    } composepass;
+
     void createShaderModules();
     void createSwapchain();
     void createDescriptorSetLayout();
     void createPipelineLayout();
     void createPipeline();
+
     void createGBuffer();
     void createGBufferDescriptorSetLayout();
     void createGBufferPipeline();
     void allocateGBufferCommandBuffer();
     void recordGBufferCommands(const EvCamera &camera);
+
+    void createComposeBuffer();
+    void createComposeDescriptorSetLayout();
+    void allocateComposeDescriptorSet();
+    void createComposeDescriptorSet();
+    void createComposePipeline();
+    void allocateComposeCommandBuffer();
+    void recordComposeCommands();
+
+
     void allocateCommandBuffers();
     void recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera, EvOverlay *overlay) const;
     void recreateSwapchain();
