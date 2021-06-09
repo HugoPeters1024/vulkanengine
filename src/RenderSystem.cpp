@@ -33,6 +33,8 @@ RenderSystem::~RenderSystem() {
 
     printf("Destroying the compose pass\n");
     vkDestroySampler(device.vkDevice, composepass.normalSampler, nullptr);
+    vkDestroySampler(device.vkDevice, composepass.posSampler, nullptr);
+    vkDestroySampler(device.vkDevice, composepass.albedoSampler, nullptr);
     vkDestroyShaderModule(device.vkDevice, composepass.vertShader, nullptr);
     vkDestroyShaderModule(device.vkDevice, composepass.fragShader, nullptr);
     composepass.framebuffer.destroy(device);
@@ -100,6 +102,8 @@ void RenderSystem::createGBuffer() {
     gpass.framebuffer.width = swapchain->extent.width;
     gpass.framebuffer.height = swapchain->extent.height;
     device.createAttachment(VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, gpass.framebuffer.width, gpass.framebuffer.height, &gpass.framebuffer.normal);
+    device.createAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, gpass.framebuffer.width, gpass.framebuffer.height, &gpass.framebuffer.position);
+    device.createAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, gpass.framebuffer.width, gpass.framebuffer.height, &gpass.framebuffer.albedo);
     device.createAttachment(device.findDepthFormat(), VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, gpass.framebuffer.width, gpass.framebuffer.height, &gpass.framebuffer.depth);
 
     VkAttachmentDescription defaultDescription {
@@ -110,28 +114,46 @@ void RenderSystem::createGBuffer() {
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
     };
 
+    VkAttachmentDescription normalDescription = defaultDescription;
+    normalDescription.format = gpass.framebuffer.normal.format;
+    normalDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkAttachmentDescription positionDescription = defaultDescription;
+    positionDescription.format = gpass.framebuffer.position.format;
+    positionDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
     VkAttachmentDescription albedoDescription = defaultDescription;
-    albedoDescription.format = gpass.framebuffer.normal.format;
+    albedoDescription.format = gpass.framebuffer.albedo.format;
     albedoDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentDescription depthDescription = defaultDescription;
     depthDescription.format = gpass.framebuffer.depth.format;
     depthDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    std::array<VkAttachmentDescription, 2> attachmentDescriptions{
+    std::array<VkAttachmentDescription, 4> attachmentDescriptions{
+        normalDescription,
+        positionDescription,
         albedoDescription,
         depthDescription,
     };
 
-    std::array<VkAttachmentReference, 1> colorReferences {
+    std::array<VkAttachmentReference, 3> colorReferences {
         VkAttachmentReference {
             .attachment = 0,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        },
+        VkAttachmentReference {
+            .attachment = 1,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        },
+        VkAttachmentReference {
+            .attachment = 2,
             .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         }
     };
 
     VkAttachmentReference depthAttachmentRef {
-        .attachment = 1,
+        .attachment = 3,
         .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
     };
 
@@ -175,8 +197,10 @@ void RenderSystem::createGBuffer() {
 
     vkCheck(vkCreateRenderPass(device.vkDevice, &renderpassInfo, nullptr, &gpass.framebuffer.vkRenderPass));
 
-    std::array<VkImageView, 2> attachments{
+    std::array<VkImageView, 4> attachments{
         gpass.framebuffer.normal.view,
+        gpass.framebuffer.position.view,
+        gpass.framebuffer.albedo.view,
         gpass.framebuffer.depth.view,
     };
 
@@ -235,8 +259,11 @@ void RenderSystem::createGBufferPipeline() {
 
     auto inputAssembly = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
     auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-    auto blendAttachment = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
-    auto colorBlend = vks::initializers::pipelineColorBlendStateCreateInfo(1, &blendAttachment);
+    auto blendAttachmentNormal = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
+    auto blendAttachmentPos = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
+    auto blendAttachmentAlbedo = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
+    std::array<VkPipelineColorBlendAttachmentState, 3> blendAttachments { blendAttachmentNormal, blendAttachmentPos, blendAttachmentAlbedo };
+    auto colorBlend = vks::initializers::pipelineColorBlendStateCreateInfo(static_cast<uint32_t>(blendAttachments.size()), blendAttachments.data());
     auto depthStencil = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
     auto viewport = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
     auto multisample = vks::initializers::pipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
@@ -293,12 +320,11 @@ void RenderSystem::recordGBufferCommands(const EvCamera &camera) {
 
     vkCheck(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
-    std::array<VkClearValue, 2> clearValues {};
-    clearValues[0] = {
-            .color = {0.0f, 0.0f, 0.0f, 0.0f},
-    };
-    clearValues[1] = {
-            .depthStencil = {1.0f, 0},
+    std::array<VkClearValue, 4> clearValues {
+        VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
+        VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
+        VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
+        VkClearValue { .depthStencil = {1.0f, 0}, },
     };
 
     VkRenderPassBeginInfo renderPassInfo {
@@ -342,7 +368,7 @@ void RenderSystem::recordGBufferCommands(const EvCamera &camera) {
                 0,
                 sizeof(push),
                 &push);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipelineLayout, 0, 1, &modelComp.model->vkDescriptorSets[0], 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gpass.pipelineLayout, 0, 1, &modelComp.model->vkDescriptorSets[0], 0, nullptr);
         modelComp.model->bind(commandBuffer);
         modelComp.model->draw(commandBuffer);
     }
@@ -360,7 +386,23 @@ void RenderSystem::createComposeDescriptorSetLayout() {
         .pImmutableSamplers = nullptr,
     };
 
-    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {normalBinding};
+    VkDescriptorSetLayoutBinding posBinding {
+            .binding = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pImmutableSamplers = nullptr,
+    };
+
+    VkDescriptorSetLayoutBinding albedoBinding {
+            .binding = 2,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pImmutableSamplers = nullptr,
+    };
+
+    std::array<VkDescriptorSetLayoutBinding, 3> bindings = {normalBinding, posBinding, albedoBinding};
 
     VkDescriptorSetLayoutCreateInfo layoutInfo {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -383,6 +425,8 @@ void RenderSystem::allocateComposeDescriptorSet() {
 
     VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo(device.vkPhysicalDeviceProperties.limits.maxSamplerAnisotropy);
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &composepass.normalSampler));
+    vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &composepass.posSampler));
+    vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &composepass.albedoSampler));
 }
 
 void RenderSystem::createComposeDescriptorSet() {
@@ -393,21 +437,35 @@ void RenderSystem::createComposeDescriptorSet() {
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
 
-    VkWriteDescriptorSet writeNormalDescriptor {
+    VkDescriptorImageInfo posDescriptorInfo {
+            .sampler = composepass.posSampler,
+            .imageView = gpass.framebuffer.position.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+
+    VkDescriptorImageInfo albedoDescriptorInfo {
+            .sampler = composepass.albedoSampler,
+            .imageView = gpass.framebuffer.albedo.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+
+    std::array<VkDescriptorImageInfo, 3> descriptors {
+        normalDescriptorInfo,
+        posDescriptorInfo,
+        albedoDescriptorInfo,
+    };
+
+    VkWriteDescriptorSet writeDescriptors {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = composepass.descriptorSet,
         .dstBinding = 0,
         .dstArrayElement = 0,
-        .descriptorCount = 1,
+        .descriptorCount = static_cast<uint32_t>(descriptors.size()),
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .pImageInfo = &normalDescriptorInfo,
+        .pImageInfo = descriptors.data(),
     };
 
-    std::array<VkWriteDescriptorSet, 1> descriptorWrites {
-        writeNormalDescriptor,
-    };
-
-    vkUpdateDescriptorSets(device.vkDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+    vkUpdateDescriptorSets(device.vkDevice, 1, &writeDescriptors, 0, nullptr);
 }
 
 void RenderSystem::createComposeBuffer() {

@@ -35,10 +35,14 @@ class RenderSystem : public System
     struct {
         struct GBuffer : public EvFrameBuffer {
             EvFrameBufferAttachment normal;
+            EvFrameBufferAttachment position;
+            EvFrameBufferAttachment albedo;
             EvFrameBufferAttachment depth;
 
             virtual void destroy(EvDevice& device) override {
                 normal.destroy(device);
+                position.destroy(device);
+                albedo.destroy(device);
                 depth.destroy(device);
                 EvFrameBuffer::destroy(device);
             }
@@ -69,6 +73,8 @@ class RenderSystem : public System
         VkCommandBuffer commandBuffer;
 
         VkSampler normalSampler;
+        VkSampler posSampler;
+        VkSampler albedoSampler;
     } composepass;
 
     void createShaderModules();
