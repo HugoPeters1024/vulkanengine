@@ -21,8 +21,10 @@ shader("shader.frag")
 shader("gpass.vert")
 shader("gpass.frag")
 
-shader("compose.vert")
+shader("screenfill.vert")
+
 shader("compose.frag")
+shader("post.frag")
 
 add_executable(vulkanray main.cpp ${src})
 set_target_properties(vulkanray PROPERTIES LINKER_LANGUAGE CXX)

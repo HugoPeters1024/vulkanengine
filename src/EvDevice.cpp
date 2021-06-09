@@ -507,6 +507,7 @@ void EvFrameBufferAttachment::destroy(EvDevice &device) {
 }
 
 void EvFrameBuffer::destroy(EvDevice &device) {
-    vkDestroyFramebuffer(device.vkDevice, vkFrameBuffer, nullptr);
+    for(const auto& frameBuffer : vkFrameBuffers)
+        vkDestroyFramebuffer(device.vkDevice, frameBuffer, nullptr);
     vkDestroyRenderPass(device.vkDevice, vkRenderPass, nullptr);
 }

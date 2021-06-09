@@ -18,7 +18,7 @@ struct EvDeviceInfo {
     uint32_t textureDescriptorSetCount = 0;
 };
 
-struct EvFrameBufferAttachment : NoCopy {
+struct EvFrameBufferAttachment {
     VkImage image;
     VmaAllocation imageMemory;
     VkImageView view;
@@ -29,7 +29,7 @@ struct EvFrameBufferAttachment : NoCopy {
 
 struct EvFrameBuffer : NoCopy {
     uint32_t width, height;
-    VkFramebuffer vkFrameBuffer;
+    std::vector<VkFramebuffer> vkFrameBuffers;
     VkRenderPass vkRenderPass;
 
     virtual void destroy(EvDevice& device);
