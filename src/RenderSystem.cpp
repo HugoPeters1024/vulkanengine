@@ -133,19 +133,31 @@ Signature RenderSystem::GetSignature() const {
     return signature;
 }
 
-std::unique_ptr<EvModel> RenderSystem::createModel(const std::string &filename, const EvTexture *texture) {
-    auto ret = std::make_unique<EvModel>(device, filename, texture);
-    ret->vkDescriptorSets.resize(swapchain->vkImages.size());
+EvModel* RenderSystem::createModel(const std::string &filename, const EvTexture *texture) {
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    std::vector<std::string> textureFiles;
+    BoundingBox bb{};
+    EvModel::loadModel(filename, &vertices, &indices, &textureFiles, &bb);
 
-    std::vector<VkDescriptorSetLayout> layouts(ret->vkDescriptorSets.size(), gPass->getDescriptorSetLayout());
+    if (!texture) {
+        assert(textureFiles.size() == 1);
+        texture = createTextureFromFile(textureFiles[0]);
+    }
+
+    createdModels.push_back(std::make_unique<EvModel>(device, vertices, indices, bb, texture));
+    auto& model = createdModels.back();
+    model->vkDescriptorSets.resize(swapchain->vkImages.size());
+
+    std::vector<VkDescriptorSetLayout> layouts(model->vkDescriptorSets.size(), gPass->getDescriptorSetLayout());
     VkDescriptorSetAllocateInfo allocInfo {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = device.vkDescriptorPool,
-        .descriptorSetCount = static_cast<uint32_t>(ret->vkDescriptorSets.size()),
+        .descriptorSetCount = static_cast<uint32_t>(model->vkDescriptorSets.size()),
         .pSetLayouts = layouts.data(),
     };
 
-    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, ret->vkDescriptorSets.data()));
+    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, model->vkDescriptorSets.data()));
 
     auto imageDescriptor = texture->getDescriptorInfo();
 
@@ -153,7 +165,7 @@ std::unique_ptr<EvModel> RenderSystem::createModel(const std::string &filename, 
         std::array<VkWriteDescriptorSet,1> descriptorWrites {
             VkWriteDescriptorSet {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = ret->vkDescriptorSets[i],
+                .dstSet = model->vkDescriptorSets[i],
                 .dstBinding = 0,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
@@ -169,7 +181,18 @@ std::unique_ptr<EvModel> RenderSystem::createModel(const std::string &filename, 
             0, nullptr);
     }
 
-    return ret;
+    return model.get();
+}
+
+EvTexture* RenderSystem::createTextureFromIntColor(uint32_t color) {
+    createdTextures.push_back(EvTexture::fromIntColor(device, color));
+    return createdTextures.back().get();
+}
+
+EvTexture *RenderSystem::createTextureFromFile(const std::string &filename) {
+    printf("Loading texture %s\n", filename.c_str());
+    createdTextures.push_back(EvTexture::fromFile(device, filename));
+    return createdTextures.back().get();
 }
 
 

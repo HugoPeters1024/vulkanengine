@@ -1,11 +1,8 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "EvModel.h"
 
-EvModel::EvModel(EvDevice &device, const std::string &objFile, const EvTexture *texture)
-        : device(device), texture(texture) {
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    loadModel(objFile, &vertices, &indices, &boundingBox);
+EvModel::EvModel(EvDevice &device, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices, BoundingBox bb, const EvTexture *texture)
+        : device(device), boundingBox(bb), texture(texture) {
     createVertexBuffer(vertices);
     createIndexBuffer(indices);
 }
@@ -19,7 +16,7 @@ EvModel::~EvModel() {
     vmaDestroyBuffer(device.vmaAllocator, vkVertexBuffer, vkVertexMemory);
 }
 
-void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, BoundingBox *box) {
+void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, std::vector<std::string> *textureFiles, BoundingBox *box) {
     *box = BoundingBox::InsideOut();
     tinyobj:: ObjReaderConfig config;
 
@@ -36,8 +33,12 @@ void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertic
     const auto& shapes = reader.GetShapes();
     const auto& materials = reader.GetMaterials();
 
+    for(const auto& mat : materials) {
+        textureFiles->push_back("./assets/textures/" + mat.diffuse_texname);
+    }
+
     uint indexHead = 0;
-    std::unordered_map<Vertex, uint32_t> indexMap;
+    std::unordered_map<Vertex, uint32_t> indexMap(50000);
 
     for(const auto& shape : shapes) {
         for(size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {

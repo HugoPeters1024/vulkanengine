@@ -12,7 +12,7 @@ App::App()
         .fov = 90,
     };
     createECSSystems();
-    loadModel();
+    loadModels();
     createECSWorld();
 }
 
@@ -33,7 +33,7 @@ void App::Run() {
         physicsSystem->setWorldGravity(renderSystem->getUIInfo().gravity);
 
         if (tick % 60 == 0) {
-            addInstance(cubeModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6));
+            addInstance(cubeModel, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6));
         }
     }
 
@@ -50,18 +50,20 @@ void App::createECSSystems() {
     physicsSystem = ecsCoordinator.RegisterSystem<PhysicsSystem>();
 }
 
-void App::loadModel() {
-    texture = EvTexture::fromFile(device, "assets/textures/cube.png");
-    whiteTex = EvTexture::fromIntColor(device, 0xffffff);
-    cubeModel = renderSystem->createModel("assets/models/cube.obj", whiteTex.get());
-    lucyModel = renderSystem->createModel("assets/models/lucy.obj", whiteTex.get());
+void App::loadModels() {
+    whiteTex = renderSystem->createTextureFromIntColor(0xffffff);
+    cubeModel = renderSystem->createModel("assets/models/cube.obj", whiteTex);
+    lucyModel = renderSystem->createModel("assets/models/lucy.obj", whiteTex);
+    florianModel = renderSystem->createModel("assets/models/florian_small.obj", nullptr);
 }
 
 void App::createECSWorld() {
-    addInstance(cubeModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6));
-    addInstance(cubeModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0.2, -1, 6.1));
-    auto lucy = addInstance(lucyModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.03f), glm::vec3(0.2, -3, 6.01));
-    auto floor = addInstance(cubeModel.get(), rp3::BodyType::KINEMATIC, glm::vec3(5.0f, 0.2f, 5.0f), glm::vec3(0, 4, 6));
+    addInstance(cubeModel, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6));
+    addInstance(cubeModel, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0.2, -1, 6.1));
+    auto lucy = addInstance(lucyModel, rp3::BodyType::DYNAMIC, glm::vec3(0.03f), glm::vec3(0.2, -3, 6.01));
+    auto florian = addInstance(florianModel, rp3::BodyType::DYNAMIC, glm::vec3(0.03f), glm::vec3(2.2, -3, 6.01));
+    physicsSystem->setMass(florian, 100);
+    auto floor = addInstance(cubeModel, rp3::BodyType::KINEMATIC, glm::vec3(25.0f, 0.2f, 25.0f), glm::vec3(0, 4, 6));
     physicsSystem->setMass(lucy, 10);
    // physicsSystem->setAngularVelocity(floor, glm::vec3(1.f,0,  0));
 }

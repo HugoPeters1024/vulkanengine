@@ -28,8 +28,8 @@ void main() {
     float diffuse = max(0.0f, dot(normal, toLight)) / toLightDis2;
 
     vec3 E = normalize(push.camPos - position);
-    vec3 R = reflect(-E, normal);
-    float specular = 0.2f * pow(max(0.0f, dot(E, R)), 100);
+    vec3 R = normalize(reflect(-E, normal));
+    float specular = 0.14f * pow(max(0.0f, dot(E, R)), 40);
 
 
     vec3 ambient = vec3(0.1f);

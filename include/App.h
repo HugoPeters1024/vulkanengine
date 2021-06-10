@@ -19,17 +19,17 @@ class App {
     EvDevice device;
     EvInputHelper inputHelper;
     EvCamera camera;
-    std::unique_ptr<EvModel> cubeModel, lucyModel;
     float time = 0;
 
     EcsCoordinator ecsCoordinator;
     std::shared_ptr<RenderSystem> renderSystem;
     std::shared_ptr<PhysicsSystem> physicsSystem;
 
-    std::unique_ptr<EvTexture> texture, whiteTex;
+    EvModel *cubeModel, *lucyModel, *florianModel;
+    EvTexture *whiteTex;
 
     void createECSSystems();
-    void loadModel();
+    void loadModels();
     void createECSWorld();
     Entity addInstance(EvModel* model, rp3::BodyType bodyType, glm::vec3 scale, glm::vec3 position);
 

@@ -163,6 +163,8 @@ void EvComposePass::allocateDescriptorSets(uint32_t nrImages) {
     vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, descriptorSets.data()));
 
     VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo(device.vkPhysicalDeviceProperties.limits.maxSamplerAnisotropy);
+    samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.minFilter = VK_FILTER_NEAREST;
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &normalSampler));
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &posSampler));
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &albedoSampler));

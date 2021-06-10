@@ -38,13 +38,13 @@ private:
 
     void createVertexBuffer(const std::vector<Vertex>& vertices);
     void createIndexBuffer(const std::vector<uint32_t>& indices);
-    static void loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, BoundingBox *box);
 
 public:
+    static void loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, std::vector<std::string>* textureFiles, BoundingBox *box);
     const EvTexture *texture = nullptr;
     std::vector<VkDescriptorSet> vkDescriptorSets;
     BoundingBox boundingBox;
-    EvModel(EvDevice &device, const std::string &objFile, const EvTexture *texture);
+    EvModel(EvDevice &device, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, BoundingBox bb, const EvTexture *texture);
     ~EvModel();
 
     void bind(VkCommandBuffer commandBuffer);

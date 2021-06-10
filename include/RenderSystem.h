@@ -34,6 +34,9 @@ class RenderSystem : public System
     std::unique_ptr<EvPostPass> postPass;
     std::unique_ptr<EvOverlay> overlay;
 
+    std::vector<std::unique_ptr<EvModel>> createdModels;
+    std::vector<std::unique_ptr<EvTexture>> createdTextures;
+
     void createSwapchain();
 
     void recordGBufferCommands(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera &camera);
@@ -52,5 +55,7 @@ public:
 
     Signature GetSignature() const override;
     inline EvSwapchain* getSwapchain() const { assert(swapchain); return swapchain.get(); }
-    std::unique_ptr<EvModel> createModel(const std::string& filename, const EvTexture* texture);
+    EvModel* createModel(const std::string& filename, const EvTexture* texture);
+    EvTexture* createTextureFromIntColor(uint32_t color);
+    EvTexture* createTextureFromFile(const std::string& filename);
 };
