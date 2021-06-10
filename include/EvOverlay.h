@@ -17,11 +17,11 @@ private:
     VkDescriptorPool imguiPool;
 
     void createDescriptorPool();
-    void initImGui(const EvSwapchain &swapchain);
+    void initImGui(VkRenderPass renderPass, uint32_t nrImages);
 
 public:
     UIInfo uiInfo;
-    EvOverlay(EvDevice &device, const EvSwapchain &swapchain);
+    EvOverlay(EvDevice &device, VkRenderPass renderPass, uint32_t nrImages);
     ~EvOverlay();
 
     void NewFrame();

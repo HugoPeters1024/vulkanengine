@@ -245,8 +245,8 @@ void EvGPass::startPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) const 
         .renderPass = framebuffer.vkRenderPass,
         .framebuffer = framebuffer.vkFrameBuffers[imageIdx],
         .renderArea = {
-                .offset = {0,0},
-                .extent = {framebuffer.width, framebuffer.height},
+            .offset = {0,0},
+            .extent = {framebuffer.width, framebuffer.height},
         },
         .clearValueCount = static_cast<uint32_t>(clearValues.size()),
         .pClearValues = clearValues.data(),

@@ -12,6 +12,7 @@
 #include "EvOverlay.h"
 #include "EvGPass.h"
 #include "EvComposePass.h"
+#include "EvPostPass.h"
 #include <ecs/ecs.h>
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -28,32 +29,25 @@ class RenderSystem : public System
     EvDevice& device;
     std::unique_ptr<EvSwapchain> swapchain;
     std::vector<VkCommandBuffer> commandBuffers;
-    VkPipelineLayout vkPipelineLayout;
-    VkShaderModule vertShaderModule;
-    VkShaderModule fragShaderModule;
-    std::unique_ptr<EvRastPipeline> rastPipeline{};
-    VkDescriptorSetLayout vkDescriptorSetLayout;
 
-    std::unique_ptr<EvGPass> gpass2;
-    std::unique_ptr<EvComposePass> composepass2;
+    std::unique_ptr<EvGPass> gPass;
+    std::unique_ptr<EvComposePass> composePass;
+    std::unique_ptr<EvPostPass> postPass;
+    std::unique_ptr<EvOverlay> overlay;
 
-    void createShaderModules();
     void createSwapchain();
-    void createDescriptorSetLayout();
-    void createPipelineLayout();
-    void createPipeline();
 
     void recordGBufferCommands(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera &camera);
 
     void allocateCommandBuffers();
-    void recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera, EvOverlay *overlay);
+    void recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera);
     void recreateSwapchain();
 
 public:
     RenderSystem(EvDevice& device);
     ~RenderSystem();
 
-    void Render(const EvCamera &camera, EvOverlay* overlay);
+    void Render(const EvCamera &camera);
 
     Signature GetSignature() const override;
     inline EvSwapchain* getSwapchain() const { assert(swapchain); return swapchain.get(); }

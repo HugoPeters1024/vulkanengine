@@ -42,6 +42,13 @@ public:
     ~EvComposePass();
 
     inline VkPipelineLayout getPipelineLayout() const { return pipelineLayout; }
+    inline std::vector<VkImageView> getComposedViews() const {
+        std::vector<VkImageView> ret{};
+        for(const auto& composed : framebuffer.composeds) {
+            ret.push_back(composed.view);
+        }
+        return ret;
+    }
 
     void recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages, const std::vector<VkImageView>& normalViews, const std::vector<VkImageView>& posViews, const std::vector<VkImageView>& albedoViews);
     void render(VkCommandBuffer cmdBuffer, uint32_t imageIdx) const;

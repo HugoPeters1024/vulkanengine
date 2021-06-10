@@ -152,7 +152,7 @@ void EvComposePass::createDescriptorSetLayout() {
 
 void EvComposePass::allocateDescriptorSets(uint32_t nrImages) {
     descriptorSets.resize(nrImages);
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(2, descriptorSetLayout);
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = device.vkDescriptorPool,
@@ -280,6 +280,8 @@ void EvComposePass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_
     createBuffer(width, height, nrImages);
     createDescriptorSets(nrImages, normalViews, posViews, albedoViews);
 }
+
+
 
 void EvComposePass::render(VkCommandBuffer commandBuffer, uint32_t imageIdx) const {
     assert(imageIdx >= 0 && imageIdx < framebuffer.vkFrameBuffers.size());

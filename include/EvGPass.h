@@ -41,6 +41,7 @@ public:
 
     inline GBuffer& getFramebuffer() { return framebuffer; }
     inline VkPipelineLayout getPipelineLayout() const { return pipelineLayout; }
+    inline VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout; }
     inline std::vector<VkImageView> getNormalViews() const {
         std::vector<VkImageView> ret{};
         for(const auto& normal : framebuffer.normals) {

@@ -17,9 +17,6 @@ private:
     void init();
     void createSwapchain();
     void createImageViews();
-    void createDepthResources();
-    void createRenderpass();
-    void createFramebuffers();
     void createSyncObjects();
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat() const;
@@ -29,17 +26,9 @@ private:
 public:
     VkSwapchainKHR vkSwapchain;
     std::vector<VkImage> vkImages;
-    VkImage vkDepthImage;
-    VmaAllocation vkDepthImageMemory;
     std::vector<VkImageView> vkImageViews;
-    VkImageView vkDepthImageView;
-    VkImage colorImage;
-    VmaAllocation colorImageMemory;
-    VkImageView colorImageView;
-    std::vector<VkFramebuffer> vkFramebuffers;
     VkSurfaceFormatKHR surfaceFormat;
     VkExtent2D extent;
-    VkRenderPass vkRenderPass;
 
     EvSwapchain(EvDevice& device);
     EvSwapchain(EvDevice& device, std::shared_ptr<EvSwapchain> previous);
@@ -48,6 +37,4 @@ public:
     VkResult acquireNextSwapchainImage(uint32_t* imageIndex);
     void waitForImageReady(uint32_t imageIndex);
     VkResult presentCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-
-    void createColorResources();
 };

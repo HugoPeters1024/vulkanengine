@@ -12,7 +12,6 @@ App::App()
         .fov = 90,
     };
     createECSSystems();
-    createOverlay();
     loadModel();
     createECSWorld();
 }
@@ -26,11 +25,10 @@ void App::Run() {
         inputHelper.swapBuffers();
         camera.handleInput(inputHelper);
         physicsSystem->Update();
-        renderSystem->Render(camera, overlay.get());
+        renderSystem->Render(camera);
         time += 0.01f;
         double timePerFrame = glfwGetTime() - startFrame;
-        overlay->uiInfo.fps = static_cast<float>(1.0f / timePerFrame);
-        physicsSystem->setWorldGravity(overlay->uiInfo.gravity);
+        //physicsSystem->setWorldGravity(overlay->uiInfo.gravity);
 
         if (tick % 60 == 0) {
             addInstance(cubeModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6));
@@ -80,8 +78,4 @@ Entity App::addInstance(EvModel *model, rp3::BodyType bodyType, glm::vec3 scale,
     physicsSystem->addIntersectionBoxBody(entity, model->boundingBox * scale);
     physicsSystem->linkModelComponent(entity);
     return entity;
-}
-
-void App::createOverlay() {
-    overlay = std::make_unique<EvOverlay>(device, *renderSystem->getSwapchain());
 }

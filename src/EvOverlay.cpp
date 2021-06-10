@@ -2,9 +2,9 @@
 
 // sourced from https://vkguide.dev/docs/extra-chapter/implementing_imgui/
 
-EvOverlay::EvOverlay(EvDevice &device, const EvSwapchain &swapchain) : device(device) {
+EvOverlay::EvOverlay(EvDevice &device, VkRenderPass renderPass, uint32_t nrImages) : device(device) {
     createDescriptorPool();
-    initImGui(swapchain);
+    initImGui(renderPass, nrImages);
 }
 
 EvOverlay::~EvOverlay() {
@@ -43,7 +43,7 @@ void EvOverlay::createDescriptorPool() {
 
 }
 
-void EvOverlay::initImGui(const EvSwapchain &swapchain) {
+void EvOverlay::initImGui(VkRenderPass renderPass, uint32_t nrImages) {
     ImGui::CreateContext();
 
     ImGui_ImplGlfw_InitForVulkan(device.window.glfwWindow, true);
@@ -54,12 +54,12 @@ void EvOverlay::initImGui(const EvSwapchain &swapchain) {
         .Device = device.vkDevice,
         .Queue = device.graphicsQueue,
         .DescriptorPool = imguiPool,
-        .MinImageCount= static_cast<uint32_t>(swapchain.vkImages.size()),
-        .ImageCount= static_cast<uint32_t>(swapchain.vkImages.size()),
-        .MSAASamples = device.msaaSamples,
+        .MinImageCount = nrImages,
+        .ImageCount= nrImages,
+        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
     };
 
-    ImGui_ImplVulkan_Init(&initInfo, swapchain.vkRenderPass);
+    ImGui_ImplVulkan_Init(&initInfo, renderPass);
 
     auto initCmd = device.beginSingleTimeCommands();
     ImGui_ImplVulkan_CreateFontsTexture(initCmd);

@@ -1,39 +1,25 @@
 #include "RenderSystem.h"
 
 RenderSystem::RenderSystem(EvDevice &device) : device(device) {
-    createShaderModules();
     createSwapchain();
-    createDescriptorSetLayout();
-    createPipelineLayout();
-    createPipeline();
 
     allocateCommandBuffers();
 
     uint32_t nrImages = swapchain->vkImages.size();
-    gpass2 = std::make_unique<EvGPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages);
-    composepass2 = std::make_unique<EvComposePass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
-                                                   gpass2->getNormalViews(),
-                                                   gpass2->getPosViews(),
-                                                   gpass2->getAlbedoViews());
+    gPass = std::make_unique<EvGPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages);
+    composePass = std::make_unique<EvComposePass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
+                                                  gPass->getNormalViews(),
+                                                  gPass->getPosViews(),
+                                                  gPass->getAlbedoViews());
+    postPass = std::make_unique<EvPostPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
+                                            swapchain->surfaceFormat.format, swapchain->vkImageViews,
+                                            composePass->getComposedViews());
+    overlay = std::make_unique<EvOverlay>(device, postPass->getRenderPass(), nrImages);
 }
 
 RenderSystem::~RenderSystem() {
-    printf("Destroying descriptor set layout\n");
-    vkDestroyDescriptorSetLayout(device.vkDevice, vkDescriptorSetLayout, nullptr);
-
-    printf("Destroying the shader modules\n");
-    vkDestroyShaderModule(device.vkDevice, vertShaderModule, nullptr);
-    vkDestroyShaderModule(device.vkDevice, fragShaderModule, nullptr);
-
-    printf("Destroying pipeline layout\n");
-    vkDestroyPipelineLayout(device.vkDevice, vkPipelineLayout, nullptr);
 }
 
-
-void RenderSystem::createShaderModules() {
-    vertShaderModule = device.createShaderModule("assets/shaders_bin/shader.vert.spv");
-    fragShaderModule = device.createShaderModule("assets/shaders_bin/shader.frag.spv");
-}
 
 void RenderSystem::createSwapchain() {
     if (swapchain == nullptr) {
@@ -43,39 +29,8 @@ void RenderSystem::createSwapchain() {
     }
 }
 
-void RenderSystem::createPipelineLayout() {
-    VkPushConstantRange pushConstantRange{
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            .offset = 0,
-            .size = sizeof(PushConstant),
-    };
-
-    VkPipelineLayoutCreateInfo createInfo {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 1,
-            .pSetLayouts = &vkDescriptorSetLayout,
-            .pushConstantRangeCount = 1,
-            .pPushConstantRanges = &pushConstantRange,
-    };
-
-    vkCheck(vkCreatePipelineLayout(device.vkDevice, &createInfo, nullptr, &vkPipelineLayout));
-}
-
-void RenderSystem::createPipeline() {
-
-    EvRastPipelineInfo pipelineInfo;
-    EvRastPipeline::defaultRastPipelineInfo(vertShaderModule, fragShaderModule, device.msaaSamples, &pipelineInfo);
-    pipelineInfo.renderPass = swapchain->vkRenderPass;
-    pipelineInfo.pipelineLayout = vkPipelineLayout;
-    pipelineInfo.descriptorSetLayout = vkDescriptorSetLayout;
-    pipelineInfo.swapchainImages = static_cast<uint32>(swapchain->vkImages.size());
-
-    rastPipeline = std::make_unique<EvRastPipeline>(device, pipelineInfo);
-}
-
-
 void RenderSystem::recordGBufferCommands(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera &camera) {
-    gpass2->startPass(commandBuffer, imageIdx);
+    gPass->startPass(commandBuffer, imageIdx);
 
     PushConstant push{
         .camera = camera.getVPMatrix(device.window.getAspectRatio()),
@@ -87,37 +42,17 @@ void RenderSystem::recordGBufferCommands(VkCommandBuffer commandBuffer, uint32_t
         push.mvp = modelComp.transform * scaleMatrix;
         vkCmdPushConstants(
                 commandBuffer,
-                vkPipelineLayout,
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                gPass->getPipelineLayout(),
+                VK_SHADER_STAGE_VERTEX_BIT,
                 0,
                 sizeof(push),
                 &push);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gpass2->getPipelineLayout(), 0, 1, &modelComp.model->vkDescriptorSets[imageIdx], 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gPass->getPipelineLayout(), 0, 1, &modelComp.model->vkDescriptorSets[imageIdx], 0, nullptr);
         modelComp.model->bind(commandBuffer);
         modelComp.model->draw(commandBuffer);
     }
 
-    gpass2->endPass(commandBuffer);
-}
-
-void RenderSystem::createDescriptorSetLayout() {
-    VkDescriptorSetLayoutBinding textureBinding {
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        .pImmutableSamplers = nullptr,
-    };
-
-    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {textureBinding};
-
-    VkDescriptorSetLayoutCreateInfo layoutInfo {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = static_cast<uint32_t>(bindings.size()),
-        .pBindings = bindings.data(),
-    };
-
-    vkCheck(vkCreateDescriptorSetLayout(device.vkDevice, &layoutInfo, nullptr, &vkDescriptorSetLayout));
+    gPass->endPass(commandBuffer);
 }
 
 void RenderSystem::allocateCommandBuffers() {
@@ -133,7 +68,7 @@ void RenderSystem::allocateCommandBuffers() {
     vkCheck(vkAllocateCommandBuffers(device.vkDevice, &createInfo, commandBuffers.data()));
 }
 
-void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera, EvOverlay *overlay) {
+void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera) {
     const VkCommandBuffer& commandBuffer = commandBuffers[imageIndex];
     vkCheck(vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
@@ -144,69 +79,12 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
 
     vkCheck(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
-    std::array<VkClearValue, 3> clearValues {};
-    clearValues[0] = {
-            .color = {0.0f, 0.1f, 0.1f, 1.0f},
-    };
-    clearValues[1] = {
-            .color = {0.0f, 0.1f, 0.1f, 1.0f},
-    };
-    clearValues[2] = {
-            .depthStencil = {1.0f, 0},
-    };
-
-    VkRenderPassBeginInfo renderPassInfo {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = swapchain->vkRenderPass,
-            .framebuffer = swapchain->vkFramebuffers[imageIndex],
-            .renderArea = {
-                    .offset = {0,0},
-                    .extent = swapchain->extent,
-            },
-            .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-            .pClearValues = clearValues.data(),
-    };
-    VkViewport viewport {
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = static_cast<float>(swapchain->extent.width),
-            .height = static_cast<float>(swapchain->extent.height),
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
-    };
-    VkRect2D scissor{{0,0}, swapchain->extent};
-
-    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-    rastPipeline->bind(commandBuffer);
-
-    PushConstant push{
-        .camera = camera.getVPMatrix(device.window.getAspectRatio()),
-    };
-
-    for (const auto& entity : m_entities) {
-        auto& modelComp = m_coordinator->GetComponent<ModelComponent>(entity);
-        auto scaleMatrix = glm::scale(glm::mat4(1.0f), modelComp.scale);
-        push.mvp = modelComp.transform * scaleMatrix;
-        vkCmdPushConstants(
-                commandBuffer,
-                vkPipelineLayout,
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                0,
-                sizeof(push),
-                &push);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipelineLayout, 0, 1, &modelComp.model->vkDescriptorSets[imageIndex], 0, nullptr);
-        modelComp.model->bind(commandBuffer);
-        modelComp.model->draw(commandBuffer);
-    }
-
-    if (overlay)
-        overlay->Draw(commandBuffer);
-    vkCmdEndRenderPass(commandBuffer);
-
     recordGBufferCommands(commandBuffer, imageIndex, camera);
-    composepass2->render(commandBuffer, imageIndex);
+    composePass->render(commandBuffer, imageIndex);
+    postPass->beginPass(commandBuffer, imageIndex);
+    overlay->Draw(commandBuffer);
+    postPass->endPass(commandBuffer);
+
 
     vkCheck(vkEndCommandBuffer(commandBuffer));
 }
@@ -216,11 +94,12 @@ void RenderSystem::recreateSwapchain() {
     device.window.waitForEvent();
     createSwapchain();
     uint32_t nrImages = swapchain->vkImages.size();
-    gpass2->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages);
-    composepass2->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gpass2->getNormalViews(), gpass2->getPosViews(), gpass2->getAlbedoViews());
+    gPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages);
+    composePass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gPass->getNormalViews(), gPass->getPosViews(), gPass->getAlbedoViews());
+    postPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, composePass->getComposedViews(), swapchain->surfaceFormat.format, swapchain->vkImageViews);
 }
 
-void RenderSystem::Render(const EvCamera &camera, EvOverlay* overlay) {
+void RenderSystem::Render(const EvCamera &camera) {
     overlay->NewFrame();
     uint32_t imageIndex;
     VkResult acquireImageResult = swapchain->acquireNextSwapchainImage(&imageIndex);
@@ -235,7 +114,7 @@ void RenderSystem::Render(const EvCamera &camera, EvOverlay* overlay) {
     swapchain->waitForImageReady(imageIndex);
 
 
-    recordCommandBuffer(imageIndex, camera, overlay);
+    recordCommandBuffer(imageIndex, camera);
 
     VkResult presentResult = swapchain->presentCommandBuffer(commandBuffers[imageIndex], imageIndex);
 
@@ -258,7 +137,7 @@ std::unique_ptr<EvModel> RenderSystem::createModel(const std::string &filename, 
     auto ret = std::make_unique<EvModel>(device, filename, texture);
     ret->vkDescriptorSets.resize(swapchain->vkImages.size());
 
-    std::vector<VkDescriptorSetLayout> layouts(ret->vkDescriptorSets.size(), vkDescriptorSetLayout);
+    std::vector<VkDescriptorSetLayout> layouts(ret->vkDescriptorSets.size(), gPass->getDescriptorSetLayout());
     VkDescriptorSetAllocateInfo allocInfo {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = device.vkDescriptorPool,
