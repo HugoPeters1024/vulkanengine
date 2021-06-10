@@ -46,6 +46,8 @@ public:
     RenderSystem(EvDevice& device);
     ~RenderSystem();
 
+    inline UIInfo& getUIInfo() { assert(overlay); return overlay->getUIInfo(); }
+
     void Render(const EvCamera &camera);
 
     Signature GetSignature() const override;

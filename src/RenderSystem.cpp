@@ -80,7 +80,7 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
     vkCheck(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
     recordGBufferCommands(commandBuffer, imageIndex, camera);
-    composePass->render(commandBuffer, imageIndex);
+    composePass->render(commandBuffer, imageIndex, camera);
     postPass->beginPass(commandBuffer, imageIndex);
     overlay->Draw(commandBuffer);
     postPass->endPass(commandBuffer);

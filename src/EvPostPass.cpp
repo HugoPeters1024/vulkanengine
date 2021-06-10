@@ -152,18 +152,12 @@ void EvPostPass::createDescriptorSets(uint32_t nrImages, const std::vector<VkIma
 }
 
 void EvPostPass::createPipeline() {
-    VkPushConstantRange pushConstantRange{
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .offset = 0,
-            .size = sizeof(glm::vec2),
-    };
-
     VkPipelineLayoutCreateInfo pipelineLayoutInfo {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 1,
-            .pSetLayouts = &descriptorSetLayout,
-            .pushConstantRangeCount = 1,
-            .pPushConstantRanges = &pushConstantRange,
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &descriptorSetLayout,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = nullptr,
     };
 
     vkCheck(vkCreatePipelineLayout(device.vkDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout));
@@ -181,26 +175,26 @@ void EvPostPass::createPipeline() {
     std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
     auto dynamicState = vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables);
     std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages {
-            vks::initializers::pipelineShaderStageCreateInfo(vertShader, VK_SHADER_STAGE_VERTEX_BIT),
-            vks::initializers::pipelineShaderStageCreateInfo(fragShader, VK_SHADER_STAGE_FRAGMENT_BIT),
+        vks::initializers::pipelineShaderStageCreateInfo(vertShader, VK_SHADER_STAGE_VERTEX_BIT),
+        vks::initializers::pipelineShaderStageCreateInfo(fragShader, VK_SHADER_STAGE_FRAGMENT_BIT),
     };
     auto vertexInput = vks::initializers::pipelineVertexInputStateCreateInfo();
 
     VkGraphicsPipelineCreateInfo pipelineInfo {
-            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount = static_cast<uint32_t>(shaderStages.size()),
-            .pStages = shaderStages.data(),
-            .pVertexInputState = &vertexInput,
-            .pInputAssemblyState = &inputAssembly,
-            .pViewportState = &viewport,
-            .pRasterizationState = &rasterization,
-            .pMultisampleState = &multisample,
-            .pDepthStencilState = &depthStencil,
-            .pColorBlendState = &colorBlend,
-            .pDynamicState = &dynamicState,
-            .layout = pipelineLayout,
-            .renderPass = framebuffer.vkRenderPass,
-            .subpass = 0
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = static_cast<uint32_t>(shaderStages.size()),
+        .pStages = shaderStages.data(),
+        .pVertexInputState = &vertexInput,
+        .pInputAssemblyState = &inputAssembly,
+        .pViewportState = &viewport,
+        .pRasterizationState = &rasterization,
+        .pMultisampleState = &multisample,
+        .pDepthStencilState = &depthStencil,
+        .pColorBlendState = &colorBlend,
+        .pDynamicState = &dynamicState,
+        .layout = pipelineLayout,
+        .renderPass = framebuffer.vkRenderPass,
+        .subpass = 0
     };
 
     vkCheck(vkCreateGraphicsPipelines(device.vkDevice, nullptr, 1, &pipelineInfo, nullptr, &pipeline));
@@ -225,8 +219,8 @@ void EvPostPass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) con
             .renderPass = framebuffer.vkRenderPass,
             .framebuffer = framebuffer.vkFrameBuffers[imageIdx],
             .renderArea = {
-                    .offset = {0,0},
-                    .extent = {framebuffer.width, framebuffer.height},
+                .offset = {0,0},
+                .extent = {framebuffer.width, framebuffer.height},
             },
             .clearValueCount = static_cast<uint32_t>(clearValues.size()),
             .pClearValues = clearValues.data(),
@@ -240,9 +234,6 @@ void EvPostPass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) con
             .maxDepth = 1.0f,
     };
     VkRect2D scissor{{0,0}, {framebuffer.width, framebuffer.height}};
-
-    glm::vec2 invScreenSize = 1.0f / glm::vec2(framebuffer.width, framebuffer.height);
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec2), &invScreenSize);
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);

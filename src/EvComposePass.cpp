@@ -218,10 +218,10 @@ void EvComposePass::createDescriptorSets(
 }
 
 void EvComposePass::createPipeline() {
-    VkPushConstantRange pushConstantRange{
+    VkPushConstantRange pushConstant {
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(glm::vec2),
+        .size = sizeof(glm::vec3),
     };
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo {
@@ -229,7 +229,7 @@ void EvComposePass::createPipeline() {
         .setLayoutCount = 1,
         .pSetLayouts = &descriptorSetLayout,
         .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &pushConstantRange,
+        .pPushConstantRanges = &pushConstant,
     };
 
     vkCheck(vkCreatePipelineLayout(device.vkDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout));
@@ -283,7 +283,7 @@ void EvComposePass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_
 
 
 
-void EvComposePass::render(VkCommandBuffer commandBuffer, uint32_t imageIdx) const {
+void EvComposePass::render(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera& camera) const {
     assert(imageIdx >= 0 && imageIdx < framebuffer.vkFrameBuffers.size());
     std::array<VkClearValue, 1> clearValues {
         VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
@@ -310,13 +310,11 @@ void EvComposePass::render(VkCommandBuffer commandBuffer, uint32_t imageIdx) con
     };
     VkRect2D scissor{{0,0}, {framebuffer.width, framebuffer.height}};
 
-    glm::vec2 invScreenSize = 1.0f / glm::vec2(framebuffer.width, framebuffer.height);
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec2), &invScreenSize);
-
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec3), &camera.position);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[imageIdx], 0, nullptr);
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);

@@ -28,7 +28,9 @@ void App::Run() {
         renderSystem->Render(camera);
         time += 0.01f;
         double timePerFrame = glfwGetTime() - startFrame;
-        //physicsSystem->setWorldGravity(overlay->uiInfo.gravity);
+        auto& uiinfo = renderSystem->getUIInfo();
+        uiinfo.fps = static_cast<float>(1.0 / timePerFrame);
+        physicsSystem->setWorldGravity(renderSystem->getUIInfo().gravity);
 
         if (tick % 60 == 0) {
             addInstance(cubeModel.get(), rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6));

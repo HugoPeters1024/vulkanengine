@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EvDevice.h"
+#include "EvCamera.h"
 #include <vulkan/vulkan.h>
 #include <VulkanInitializers.hpp>
 
@@ -51,5 +52,5 @@ public:
     }
 
     void recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages, const std::vector<VkImageView>& normalViews, const std::vector<VkImageView>& posViews, const std::vector<VkImageView>& albedoViews);
-    void render(VkCommandBuffer cmdBuffer, uint32_t imageIdx) const;
+    void render(VkCommandBuffer cmdBuffer, uint32_t imageIdx, const EvCamera& camera) const;
 };
