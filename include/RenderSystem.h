@@ -6,7 +6,6 @@
 #include "EvDevice.h"
 #include "EvModel.h"
 #include "EvCamera.h"
-#include "EvRastPipeline.h"
 #include "EvSwapchain.h"
 #include "ShaderTypes.h"
 #include "EvOverlay.h"

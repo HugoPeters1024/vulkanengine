@@ -4,7 +4,6 @@
 #include "EvWindow.h"
 #include "EvDevice.h"
 #include "EvSwapchain.h"
-#include "EvRastPipeline.h"
 #include "ShaderTypes.h"
 
 #include <ecs/ecs.h>
