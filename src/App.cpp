@@ -60,10 +60,10 @@ void App::loadModels() {
 void App::createECSWorld() {
     addInstance(cubeModel, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6));
     addInstance(cubeModel, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0.2, -1, 6.1));
-    auto lucy = addInstance(lucyModel, rp3::BodyType::DYNAMIC, glm::vec3(0.03f), glm::vec3(0.2, -3, 6.01));
-    auto florian = addInstance(florianModel, rp3::BodyType::DYNAMIC, glm::vec3(0.03f), glm::vec3(2.2, -3, 6.01));
+    auto lucy = addInstance(lucyModel, rp3::BodyType::DYNAMIC, glm::vec3(0.1f), glm::vec3(0.2, -3, 6.01));
+    auto florian = addInstance(florianModel, rp3::BodyType::DYNAMIC, glm::vec3(0.1f), glm::vec3(2.2, -3, 6.01));
     physicsSystem->setMass(florian, 100);
-    auto floor = addInstance(cubeModel, rp3::BodyType::KINEMATIC, glm::vec3(25.0f, 0.2f, 25.0f), glm::vec3(0, 4, 6));
+    auto floor = addInstance(cubeModel, rp3::BodyType::STATIC, glm::vec3(25.0f, 0.2f, 25.0f), glm::vec3(0, 4, 6));
     physicsSystem->setMass(lucy, 10);
    // physicsSystem->setAngularVelocity(floor, glm::vec3(1.f,0,  0));
 }

@@ -12,13 +12,11 @@ private:
     EvDevice& device;
 
     struct GBuffer : public EvFrameBuffer {
-        std::vector<EvFrameBufferAttachment> normals;
         std::vector<EvFrameBufferAttachment> positions;
         std::vector<EvFrameBufferAttachment> albedos;
         EvFrameBufferAttachment depth;
 
         virtual void destroy(EvDevice& device) override {
-            for(auto& normal : normals) normal.destroy(device);
             for(auto& position : positions) position.destroy(device);
             for(auto& albedo : albedos) albedo.destroy(device);
             depth.destroy(device);
@@ -42,13 +40,6 @@ public:
     inline GBuffer& getFramebuffer() { return framebuffer; }
     inline VkPipelineLayout getPipelineLayout() const { return pipelineLayout; }
     inline VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout; }
-    inline std::vector<VkImageView> getNormalViews() const {
-        std::vector<VkImageView> ret{};
-        for(const auto& normal : framebuffer.normals) {
-            ret.push_back(normal.view);
-        }
-        return ret;
-    }
     inline std::vector<VkImageView> getPosViews() const {
         std::vector<VkImageView> ret{};
         for(const auto& pos : framebuffer.positions) {

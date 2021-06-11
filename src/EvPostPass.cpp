@@ -126,6 +126,7 @@ void EvPostPass::allocateDescriptorSets(uint32_t nrImages) {
     VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo(device.vkPhysicalDeviceProperties.limits.maxSamplerAnisotropy);
     samplerInfo.minFilter = VK_FILTER_NEAREST;
     samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.anisotropyEnable = false;
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &composedSampler));
 }
 

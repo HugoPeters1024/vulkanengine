@@ -32,12 +32,11 @@ private:
     void createBuffer(uint32_t width, uint32_t height, uint32_t nrImages);
     void createDescriptorSetLayout();
     void allocateDescriptorSets(uint32_t nrImages);
-    void createDescriptorSets(uint32_t nrImages, const std::vector<VkImageView>& normalViews, const std::vector<VkImageView>& posViews, const std::vector<VkImageView>& albedoViews);
+    void createDescriptorSets(uint32_t nrImages, const std::vector<VkImageView>& posViews, const std::vector<VkImageView>& albedoViews);
     void createPipeline();
 
 public:
     EvComposePass(EvDevice &device, uint32_t width, uint32_t height, uint32_t nrImages,
-                  const std::vector<VkImageView>& normalViews,
                   const std::vector<VkImageView>& posViews,
                   const std::vector<VkImageView>& albedoViews);
     ~EvComposePass();
@@ -51,6 +50,6 @@ public:
         return ret;
     }
 
-    void recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages, const std::vector<VkImageView>& normalViews, const std::vector<VkImageView>& posViews, const std::vector<VkImageView>& albedoViews);
+    void recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages, const std::vector<VkImageView>& posViews, const std::vector<VkImageView>& albedoViews);
     void render(VkCommandBuffer cmdBuffer, uint32_t imageIdx, const EvCamera& camera) const;
 };

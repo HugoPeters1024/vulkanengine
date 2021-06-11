@@ -1,14 +1,13 @@
 #include "EvComposePass.h"
 
 EvComposePass::EvComposePass(EvDevice &device, uint32_t width, uint32_t height, uint32_t nrImages,
-                             const std::vector<VkImageView> &normalViews,
                              const std::vector<VkImageView> &posViews,
                              const std::vector<VkImageView> &albedoViews)
                              : device(device) {
     createBuffer(width, height, nrImages);
     createDescriptorSetLayout();
     allocateDescriptorSets(nrImages);
-    createDescriptorSets(nrImages, normalViews, posViews, albedoViews);
+    createDescriptorSets(nrImages, posViews, albedoViews);
     createPipeline();
 }
 
@@ -115,7 +114,7 @@ void EvComposePass::createBuffer(uint32_t width, uint32_t height, uint32_t nrIma
 }
 
 void EvComposePass::createDescriptorSetLayout() {
-    VkDescriptorSetLayoutBinding normalBinding {
+    VkDescriptorSetLayoutBinding posBinding {
             .binding = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
@@ -123,7 +122,7 @@ void EvComposePass::createDescriptorSetLayout() {
             .pImmutableSamplers = nullptr,
     };
 
-    VkDescriptorSetLayoutBinding posBinding {
+    VkDescriptorSetLayoutBinding albedoBinding {
             .binding = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
@@ -131,15 +130,7 @@ void EvComposePass::createDescriptorSetLayout() {
             .pImmutableSamplers = nullptr,
     };
 
-    VkDescriptorSetLayoutBinding albedoBinding {
-            .binding = 2,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .pImmutableSamplers = nullptr,
-    };
-
-    std::array<VkDescriptorSetLayoutBinding, 3> bindings = {normalBinding, posBinding, albedoBinding};
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {posBinding, albedoBinding};
 
     VkDescriptorSetLayoutCreateInfo layoutInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -165,6 +156,7 @@ void EvComposePass::allocateDescriptorSets(uint32_t nrImages) {
     VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo(device.vkPhysicalDeviceProperties.limits.maxSamplerAnisotropy);
     samplerInfo.magFilter = VK_FILTER_NEAREST;
     samplerInfo.minFilter = VK_FILTER_NEAREST;
+    samplerInfo.anisotropyEnable = false;
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &normalSampler));
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &posSampler));
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &albedoSampler));
@@ -172,21 +164,13 @@ void EvComposePass::allocateDescriptorSets(uint32_t nrImages) {
 
 void EvComposePass::createDescriptorSets(
         uint32_t nrImages,
-        const std::vector<VkImageView>& normalViews,
         const std::vector<VkImageView>& posViews,
         const std::vector<VkImageView>& albedoViews) {
 
-    assert(normalViews.size() == nrImages);
     assert(posViews.size() == nrImages);
     assert(albedoViews.size() == nrImages);
 
     for(int i=0; i<nrImages; i++) {
-        VkDescriptorImageInfo normalDescriptorInfo{
-                .sampler = normalSampler,
-                .imageView = normalViews[i],
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-
         VkDescriptorImageInfo posDescriptorInfo{
                 .sampler = posSampler,
                 .imageView = posViews[i],
@@ -199,8 +183,7 @@ void EvComposePass::createDescriptorSets(
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
 
-        std::array<VkDescriptorImageInfo, 3> descriptors{
-                normalDescriptorInfo,
+        std::array<VkDescriptorImageInfo, 2> descriptors{
                 posDescriptorInfo,
                 albedoDescriptorInfo,
         };
@@ -275,12 +258,11 @@ void EvComposePass::createPipeline() {
 }
 
 void EvComposePass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages,
-                                        const std::vector<VkImageView> &normalViews,
                                         const std::vector<VkImageView> &posViews,
                                         const std::vector<VkImageView> &albedoViews) {
     framebuffer.destroy(device);
     createBuffer(width, height, nrImages);
-    createDescriptorSets(nrImages, normalViews, posViews, albedoViews);
+    createDescriptorSets(nrImages, posViews, albedoViews);
 }
 
 

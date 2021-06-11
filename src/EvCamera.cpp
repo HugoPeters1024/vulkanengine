@@ -8,7 +8,7 @@ glm::mat4 EvCamera::getVPMatrix(float aspectRatio) const {
 }
 
 void EvCamera::handleInput(const EvInputHelper &input) {
-    const float MOVE_SPEED = 0.02f;
+    const float MOVE_SPEED = 0.08f;
     const float TURN_SPEED = 0.04f;
 
     auto viewDir = getViewDir();

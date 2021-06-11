@@ -8,7 +8,6 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     uint32_t nrImages = swapchain->vkImages.size();
     gPass = std::make_unique<EvGPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages);
     composePass = std::make_unique<EvComposePass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
-                                                  gPass->getNormalViews(),
                                                   gPass->getPosViews(),
                                                   gPass->getAlbedoViews());
     postPass = std::make_unique<EvPostPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
@@ -95,7 +94,7 @@ void RenderSystem::recreateSwapchain() {
     createSwapchain();
     uint32_t nrImages = swapchain->vkImages.size();
     gPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages);
-    composePass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gPass->getNormalViews(), gPass->getPosViews(), gPass->getAlbedoViews());
+    composePass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gPass->getPosViews(), gPass->getAlbedoViews());
     postPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, composePass->getComposedViews(), swapchain->surfaceFormat.format, swapchain->vkImageViews);
 }
 
