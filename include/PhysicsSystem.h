@@ -1,7 +1,5 @@
 #pragma once
 
-#include <ecs/ecs.h>
-#include <reactphysics3d/reactphysics3d.h>
 #include "RenderSystem.h"
 #include "Primitives.h"
 

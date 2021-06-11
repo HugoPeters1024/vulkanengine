@@ -1,9 +1,8 @@
 #pragma once
 
+#include "core.h"
 #include "EvDevice.h"
 #include "EvCamera.h"
-#include <vulkan/vulkan.h>
-#include <VulkanInitializers.hpp>
 
 class EvComposePass {
 private:

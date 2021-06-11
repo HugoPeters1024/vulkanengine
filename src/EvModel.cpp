@@ -1,4 +1,3 @@
-#define TINYOBJLOADER_IMPLEMENTATION
 #include "EvModel.h"
 
 EvModel::EvModel(EvDevice &device, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices, BoundingBox bb, const EvTexture *texture)

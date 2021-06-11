@@ -1,11 +1,6 @@
 #pragma once
-#include <vulkan/vulkan.h>
-#include <VulkanInitializers.hpp>
-#include <stb_image.h>
-#include "utils.hpp"
+#include "core.h"
 #include "EvDevice.h"
-#include <memory>
-#include <glm/glm.hpp>
 
 class EvTexture : NoCopy {
     EvDevice& device;

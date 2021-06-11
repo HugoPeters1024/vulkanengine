@@ -1,6 +1,4 @@
 #include "EvTexture.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 EvTexture::EvTexture(EvDevice &device, unsigned char *pixels, int width, int height)
     : device(device) {

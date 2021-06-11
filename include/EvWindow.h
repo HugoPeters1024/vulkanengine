@@ -1,11 +1,7 @@
 #pragma once
 
-#include <set>
+#include "core.h"
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
-#include "utils.hpp"
 
 class EvWindow : NoCopy {
 private:

@@ -1,8 +1,6 @@
 #pragma once
 
 #include "EvDevice.h"
-#include <vulkan/vulkan.h>
-#include <VulkanInitializers.hpp>
 
 class EvPostPass {
     EvDevice& device;

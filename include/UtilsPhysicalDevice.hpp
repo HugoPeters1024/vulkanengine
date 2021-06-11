@@ -1,8 +1,6 @@
 #pragma once
 
-#include <optional>
-#include <vector>
-#include <vulkan/vulkan.h>
+#include "core.h"
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> compute;

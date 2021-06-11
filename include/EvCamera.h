@@ -1,8 +1,6 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <glm/ext.hpp>
-#include "utils.hpp"
+#include "core.h"
 #include "EvInputHelper.h"
 
 class EvCamera {

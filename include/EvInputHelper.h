@@ -1,7 +1,5 @@
 #pragma once
-#include <GLFW/glfw3.h>
-#include <vector>
-#include "utils.hpp"
+#include "core.h"
 
 class EvInputHelper : private NoCopy {
 private:

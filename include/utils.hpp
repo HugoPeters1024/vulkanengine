@@ -1,13 +1,6 @@
 #pragma once
-#include <stdexcept>
-#include <cstdlib>
-#include <string>
-#include <vector>
-#include <vulkan/vulkan.h>
-#include <cstring>
-#include <fstream>
-#include <reactphysics3d/reactphysics3d.h>
-#include <glm/glm.hpp>
+
+#include "core.h"
 
 class NoCopy
 {

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <limits>
-#include <glm/glm.hpp>
 
 struct BoundingBox {
     glm::vec3 vmin, vmax;

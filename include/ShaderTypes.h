@@ -2,7 +2,7 @@
 #define H_SHADER_TYPES
 
 #ifndef IN_SHADER
-#include <glm/glm.hpp>
+#include "core.h"
 using namespace glm;
 #endif
 
