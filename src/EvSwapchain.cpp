@@ -86,7 +86,8 @@ void EvSwapchain::createSwapchain() {
 void EvSwapchain::createImageViews() {
     vkImageViews.resize((vkImages.size()));
     for(uint i=0; i<vkImageViews.size(); i++) {
-        device.createImageView(vkImages[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, &vkImageViews[i]);
+        auto viewInfo = vks::initializers::imageViewCreateInfo(vkImages[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT);
+        vkCheck(vkCreateImageView(device.vkDevice, &viewInfo, nullptr, &vkImageViews[i]));
     }
 }
 

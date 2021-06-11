@@ -2,7 +2,6 @@
 
 PhysicsSystem::PhysicsSystem() {
     rp3::PhysicsWorld::WorldSettings settings;
-    settings.gravity = rp3::Vector3(0, 9.81, 0);
     world = physicsCommon.createPhysicsWorld(settings);
 }
 

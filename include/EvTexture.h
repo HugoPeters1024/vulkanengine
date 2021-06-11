@@ -1,5 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <VulkanInitializers.hpp>
 #include <stb_image.h>
 #include "utils.hpp"
 #include "EvDevice.h"
@@ -12,9 +13,11 @@ class EvTexture : NoCopy {
     VmaAllocation vkImageMemory;
     VkImageView vkImageView;
     VkSampler vkSampler;
+    uint32_t mipLevels;
 
     static void loadFile(const std::string &filename, unsigned char** pixels, int* width, int* height);
     void createImage(unsigned char* pixels, int width, int height);
+    void generateMipmaps(uint32_t width, uint32_t height, VkFormat format);
     void createSampler();
 
 public:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <VulkanInitializers.hpp>
 #include <set>
 #include <unordered_map>
 
@@ -74,9 +75,7 @@ public:
     VkFormat findSupportedFormat ( const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
     VkFormat findDepthFormat() const;
 
-    void createImage(uint width, uint height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-                     VkSampleCountFlagBits numSamples, VkImage *image, VmaAllocation *memory);
-    void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView);
+    void createDeviceImage(VkImageCreateInfo imageInfo, VkImage *image, VmaAllocation *memory);
     void createAttachment(VkFormat format, VkImageUsageFlagBits usage, VkSampleCountFlagBits samples, uint32_t width, uint32_t height, EvFrameBufferAttachment* attachment);
     SwapchainSupportDetails getSwapchainSupportDetails() const;
     VkShaderModule createShaderModule(const char* filepath) const;
@@ -86,5 +85,5 @@ public:
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
     void copyBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize size);
     void copyBufferToImage(VkImage dst, VkBuffer src, uint32_t width, uint32_t height);
-    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
 };

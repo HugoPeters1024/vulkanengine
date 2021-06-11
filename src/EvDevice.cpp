@@ -222,51 +222,12 @@ bool EvDevice::isDeviceSuitable(VkPhysicalDevice physicalDevice) const {
     return deviceFeatures.samplerAnisotropy;
 }
 
-void EvDevice::createImage(uint width, uint height, VkFormat format, VkImageTiling tiling,
-                           VkImageUsageFlags usage, VkSampleCountFlagBits numSamples, VkImage *image,
-                           VmaAllocation *memory) {
-    VkImageCreateInfo imageInfo {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .imageType = VK_IMAGE_TYPE_2D,
-        .format = format,
-        .extent = {
-            .width = width,
-            .height = height,
-            .depth = 1,
-        },
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = numSamples,
-        .tiling = tiling,
-        .usage = usage,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    };
-
+void EvDevice::createDeviceImage(VkImageCreateInfo imageInfo, VkImage *image, VmaAllocation *memory) {
     VmaAllocationCreateInfo allocInfo {
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
     };
 
     vkCheck(vmaCreateImage(vmaAllocator, &imageInfo, &allocInfo, image, memory, nullptr));
-}
-
-void EvDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView) {
-
-    VkImageViewCreateInfo viewInfo {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = format,
-        .subresourceRange = {
-            .aspectMask = aspectFlags,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
-
-    vkCheck(vkCreateImageView(vkDevice, &viewInfo, nullptr, imageView));
 }
 
 void EvDevice::createAttachment(VkFormat format, VkImageUsageFlagBits usage, VkSampleCountFlagBits samples, uint32_t width, uint32_t height, EvFrameBufferAttachment *attachment) {
@@ -287,8 +248,11 @@ void EvDevice::createAttachment(VkFormat format, VkImageUsageFlagBits usage, VkS
         throw std::range_error("Given usage not implemented");
     }
 
-    createImage(width, height, format, VK_IMAGE_TILING_OPTIMAL, usage | VK_IMAGE_USAGE_SAMPLED_BIT, samples, &attachment->image, &attachment->imageMemory);
-    createImageView(attachment->image, format, aspectMask, &attachment->view);
+    auto imageInfo = vks::initializers::imageCreateInfo(width, height, format, usage | VK_IMAGE_USAGE_SAMPLED_BIT);
+    imageInfo.samples = samples;
+    createDeviceImage(imageInfo, &attachment->image, &attachment->imageMemory);
+    auto viewInfo = vks::initializers::imageViewCreateInfo(attachment->image, format, aspectMask);
+    vkCheck(vkCreateImageView(vkDevice, &viewInfo, nullptr, &attachment->view));
 }
 
 SwapchainSupportDetails EvDevice::getSwapchainSupportDetails() const {
@@ -436,7 +400,7 @@ void EvDevice::copyBufferToImage(VkImage dst, VkBuffer src, uint32_t width, uint
     endSingleTimeCommands(cmdBuffer);
 }
 
-void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels) {
     struct TransitionInfo_T {
         VkAccessFlags srcAccessMask;
         VkAccessFlags dstAccessMask;
@@ -483,7 +447,7 @@ void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
         .subresourceRange = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseMipLevel = 0,
-            .levelCount = 1,
+            .levelCount = mipLevels,
             .baseArrayLayer = 0,
             .layerCount = 1,
         },

@@ -28,13 +28,13 @@ void main() {
     vec3 toLight = lightPos - position;
     float toLightDis2 = dot(toLight, toLight);
     toLight *= inversesqrt(toLightDis2);
-    float diffuse = max(0.0f, dot(normal, toLight)) / toLightDis2;
+    float diffuse = max(0.0f, dot(normal, toLight));
 
     vec3 E = normalize(push.camPos - position);
     vec3 R = normalize(reflect(-E, normal));
-    float specular = 0.14f * pow(max(0.0f, dot(E, R)), 40);
+    float specular = 0.44f * pow(max(0.0f, dot(E, R)), 40);
 
 
     vec3 ambient = vec3(0.1f);
-    outColor = vec4(albedo * (lightColor * (diffuse + specular) + ambient), 1.0f);
+    outColor = vec4(albedo * ((lightColor * (diffuse + specular)) * (1.0f / toLightDis2) + ambient), 1.0f);
 }
