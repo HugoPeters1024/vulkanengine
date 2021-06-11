@@ -20,6 +20,8 @@ void PhysicsSystem::Update() {
 
     for(const auto& entity : m_entities) {
         auto& physicsComp = m_coordinator->GetComponent<PhysicsComponent>(entity);
+        auto worldPoint = physicsComp.rigidBody->getWorldPoint(rp3::Vector3(0,0,0));
+        applyForce(entity, glm::cv(-worldPoint) / 3.0f);
 
         if (physicsComp.transformResult != nullptr) {
             rp3::Transform transform = physicsComp.rigidBody->getTransform();
@@ -49,7 +51,7 @@ rp3::RigidBody* PhysicsSystem::createRigidBody(rp3::BodyType bodyType, glm::vec3
 void PhysicsSystem::addIntersectionBoxBody(Entity entity, BoundingBox box) {
     assert(m_coordinator->HasComponent<PhysicsComponent>(entity));
     auto halfExtents = (box.vmax - box.vmin) / 2.0f;
-    auto shape = physicsCommon.createBoxShape(rp3::mkVector3(halfExtents));
+    auto shape = physicsCommon.createBoxShape(rp3::cv(halfExtents));
     auto transform = rp3::Transform::identity();
     auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
     physics.rigidBody->addCollider(shape, transform);
@@ -61,10 +63,16 @@ void PhysicsSystem::setMass(Entity entity, float mass) {
     physics.rigidBody->setMass(mass);
 }
 
+void PhysicsSystem::applyForce(Entity entity, glm::vec3 force) {
+    assert(m_coordinator->HasComponent<PhysicsComponent>(entity));
+    auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
+    physics.rigidBody->applyForceToCenterOfMass(rp3::cv(force));
+}
+
 void PhysicsSystem::setAngularVelocity(Entity entity, glm::vec3 eulerAngles) {
     assert(m_coordinator->HasComponent<PhysicsComponent>(entity));
     auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
-    physics.rigidBody->setAngularVelocity(rp3::mkVector3(eulerAngles));
+    physics.rigidBody->setAngularVelocity(rp3::cv(eulerAngles));
 }
 
 void PhysicsSystem::setWorldGravity(float gravity) {

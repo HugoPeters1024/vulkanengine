@@ -26,15 +26,18 @@ void main() {
     vec3 albedo = texture(texAlbedo, uv).xyz;
 
     vec3 toLight = lightPos - position;
-    float toLightDis2 = dot(toLight, toLight);
-    toLight *= inversesqrt(toLightDis2);
+    float lightDist = length(toLight);
+    const float a = 0.3f;
+    const float b = 0.4f;
+    float attenuation = 1.0f / (1.0f + a*lightDist + b*lightDist*lightDist);
+    toLight /= lightDist;
     float diffuse = max(0.0f, dot(normal, toLight));
 
-    vec3 E = normalize(push.camPos - position);
-    vec3 R = normalize(reflect(-E, normal));
-    float specular = 0.44f * pow(max(0.0f, dot(E, R)), 40);
+    vec3 E = normalize(position - push.camPos);
+    vec3 R = normalize(reflect(toLight, normal));
+    float specular = 4.0f * pow(max(0.0f, dot(E, R)), 40);
 
 
-    vec3 ambient = vec3(0.1f);
-    outColor = vec4(albedo * ((lightColor * (diffuse + specular)) * (1.0f / toLightDis2) + ambient), 1.0f);
+    vec3 ambient = vec3(0.01f);
+    outColor = vec4(albedo * ((lightColor * (diffuse + specular)) * attenuation + ambient), 1.0f);
 }

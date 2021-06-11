@@ -14,6 +14,10 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
                                             swapchain->surfaceFormat.format, swapchain->vkImageViews,
                                             composePass->getComposedViews());
     overlay = std::make_unique<EvOverlay>(device, postPass->getRenderPass(), nrImages);
+
+    whiteTexture = createTextureFromIntColor(0xffffff);
+    blueTexture = createTextureFromIntColor((0x0000ff));
+    defaultTextureSet = createTextureSet(whiteTexture, blueTexture);
 }
 
 RenderSystem::~RenderSystem() {
@@ -37,8 +41,10 @@ void RenderSystem::recordGBufferCommands(VkCommandBuffer commandBuffer, uint32_t
 
     for (const auto& entity : m_entities) {
         auto& modelComp = m_coordinator->GetComponent<ModelComponent>(entity);
+        assert(modelComp.mesh);
         auto scaleMatrix = glm::scale(glm::mat4(1.0f), modelComp.scale);
         push.mvp = modelComp.transform * scaleMatrix;
+        push.texScale = glm::vec4(modelComp.textureScale,0,0);
         vkCmdPushConstants(
                 commandBuffer,
                 gPass->getPipelineLayout(),
@@ -46,9 +52,10 @@ void RenderSystem::recordGBufferCommands(VkCommandBuffer commandBuffer, uint32_t
                 0,
                 sizeof(push),
                 &push);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gPass->getPipelineLayout(), 0, 1, &modelComp.model->vkDescriptorSets[imageIdx], 0, nullptr);
-        modelComp.model->bind(commandBuffer);
-        modelComp.model->draw(commandBuffer);
+        auto textureSet = modelComp.textureSet ? modelComp.textureSet : defaultTextureSet;
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gPass->getPipelineLayout(), 0, 1, &textureSet->descriptorSets[imageIdx], 0, nullptr);
+        modelComp.mesh->bind(commandBuffer);
+        modelComp.mesh->draw(commandBuffer);
     }
 
     gPass->endPass(commandBuffer);
@@ -132,55 +139,56 @@ Signature RenderSystem::GetSignature() const {
     return signature;
 }
 
-EvModel* RenderSystem::createModel(const std::string &filename, const EvTexture *texture) {
+EvMesh * RenderSystem::loadMesh(const std::string &filename, std::string *diffuseTextureFile, std::string *normalTextureFile) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    std::vector<std::string> textureFiles;
     BoundingBox bb{};
-    EvModel::loadModel(filename, &vertices, &indices, &textureFiles, &bb);
+    EvMesh::loadMesh(filename, &vertices, &indices, &bb, diffuseTextureFile, normalTextureFile);
 
-    if (!texture) {
-        assert(textureFiles.size() == 1);
-        texture = createTextureFromFile(textureFiles[0]);
-    }
+    createdMeshes.push_back(std::make_unique<EvMesh>(device, vertices, indices, bb));
+    return createdMeshes.back().get();
+}
 
-    createdModels.push_back(std::make_unique<EvModel>(device, vertices, indices, bb, texture));
-    auto& model = createdModels.back();
-    model->vkDescriptorSets.resize(swapchain->vkImages.size());
+TextureSet *RenderSystem::createTextureSet(EvTexture *diffuseTexture, EvTexture *normalTexture) {
+    assert(diffuseTexture);
+    createdTextureSets.push_back(std::make_unique<TextureSet>());
+    auto tset = createdTextureSets.back().get();
+    if (!normalTexture) normalTexture = blueTexture;
+    tset->descriptorSets.resize(swapchain->vkImages.size());
 
-    std::vector<VkDescriptorSetLayout> layouts(model->vkDescriptorSets.size(), gPass->getDescriptorSetLayout());
+    std::vector<VkDescriptorSetLayout> layouts(tset->descriptorSets.size(), gPass->getDescriptorSetLayout());
     VkDescriptorSetAllocateInfo allocInfo {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool = device.vkDescriptorPool,
-        .descriptorSetCount = static_cast<uint32_t>(model->vkDescriptorSets.size()),
-        .pSetLayouts = layouts.data(),
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = device.vkDescriptorPool,
+            .descriptorSetCount = static_cast<uint32_t>(tset->descriptorSets.size()),
+            .pSetLayouts = layouts.data(),
     };
 
-    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, model->vkDescriptorSets.data()));
+    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, tset->descriptorSets.data()));
 
-    auto imageDescriptor = texture->getDescriptorInfo();
+    auto diffuseDescriptor = diffuseTexture->getDescriptorInfo();
+    auto normalDescriptor = normalTexture->getDescriptorInfo();
 
     for(int i=0; i<swapchain->vkImages.size(); i++) {
         std::array<VkWriteDescriptorSet,1> descriptorWrites {
-            VkWriteDescriptorSet {
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = model->vkDescriptorSets[i],
-                .dstBinding = 0,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &imageDescriptor,
-            },
+                VkWriteDescriptorSet {
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = tset->descriptorSets[i],
+                        .dstBinding = 0,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        .pImageInfo = &diffuseDescriptor,
+                },
         };
 
         vkUpdateDescriptorSets(
-            device.vkDevice,
-            static_cast<uint32_t>(descriptorWrites.size()),
-            descriptorWrites.data(),
-            0, nullptr);
+                device.vkDevice,
+                static_cast<uint32_t>(descriptorWrites.size()),
+                descriptorWrites.data(),
+                0, nullptr);
     }
-
-    return model.get();
+    return tset;
 }
 
 EvTexture* RenderSystem::createTextureFromIntColor(uint32_t color) {

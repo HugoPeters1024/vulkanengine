@@ -2,7 +2,6 @@
 
 #include "core.h"
 #include "EvDevice.h"
-#include "EvTexture.h"
 #include "Primitives.h"
 
 namespace std {
@@ -17,7 +16,7 @@ namespace std {
     };
 }
 
-class EvModel : NoCopy {
+class EvMesh : NoCopy {
 private:
     EvDevice& device;
     VkBuffer vkVertexBuffer;
@@ -31,12 +30,10 @@ private:
     void createIndexBuffer(const std::vector<uint32_t>& indices);
 
 public:
-    static void loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, std::vector<std::string>* textureFiles, BoundingBox *box);
-    const EvTexture *texture = nullptr;
-    std::vector<VkDescriptorSet> vkDescriptorSets;
     BoundingBox boundingBox;
-    EvModel(EvDevice &device, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, BoundingBox bb, const EvTexture *texture);
-    ~EvModel();
+    static void loadMesh(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, BoundingBox *box, std::string* diffuseTextureFile = nullptr, std::string* normalTextureFile = nullptr);
+    EvMesh(EvDevice &device, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, BoundingBox bb);
+    ~EvMesh();
 
     void bind(VkCommandBuffer commandBuffer);
     void draw(VkCommandBuffer commandBuffer) const;

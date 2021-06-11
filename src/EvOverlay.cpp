@@ -77,6 +77,7 @@ void EvOverlay::NewFrame() {
         ImGui::TextUnformatted("test");
         ImGui::Text("fps: %f", uiInfo.fps);
         ImGui::SliderFloat("gravity", &uiInfo.gravity, -10.0f, 10.0f);
+        ImGui::SliderFloat("texScale", &uiInfo.floorScale, 0.01f, 10.0f);
     }
     ImGui::End();
 

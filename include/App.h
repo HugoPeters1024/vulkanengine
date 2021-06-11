@@ -25,13 +25,12 @@ class App {
     std::shared_ptr<RenderSystem> renderSystem;
     std::shared_ptr<PhysicsSystem> physicsSystem;
 
-    EvModel *cubeModel, *lucyModel, *florianModel;
-    EvTexture *whiteTex;
+    Entity floor;
+    EvMesh* cubeMesh;
 
     void createECSSystems();
-    void loadModels();
-    void createECSWorld();
-    Entity addInstance(EvModel* model, rp3::BodyType bodyType, glm::vec3 scale, glm::vec3 position);
+    void createWorld();
+    Entity addInstance(EvMesh* mesh, rp3::BodyType bodyType, glm::vec3 scale, glm::vec3 position, glm::vec2 textureScale, TextureSet* textureSet = nullptr);
 
 public:
     App();

@@ -11,11 +11,12 @@ layout(location = 2) out vec3 normal;
 layout (push_constant) uniform Lol {
     mat4 camera;
     mat4 mvp;
+    vec4 texScale;
 } lol;
 
 void main() {
     gl_Position = lol.camera * lol.mvp * vec4(vPosition, 1.0f);
-    uv = vUv;
+    uv = vUv * lol.texScale.xy;
     normal = normalize((lol.mvp * vec4(vNormal, 0.0f)).xyz);
     position = (lol.mvp * vec4(vPosition, 1)).xyz;
 }

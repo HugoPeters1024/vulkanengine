@@ -1,18 +1,25 @@
 #pragma once
 
 #include "EvDevice.h"
-#include "EvModel.h"
+#include "EvMesh.h"
 #include "EvCamera.h"
 #include "EvSwapchain.h"
 #include "ShaderTypes.h"
+#include "EvTexture.h"
 #include "EvOverlay.h"
 #include "EvGPass.h"
 #include "EvComposePass.h"
 #include "EvPostPass.h"
 
+struct TextureSet : NoCopy {
+    std::vector<VkDescriptorSet> descriptorSets;
+};
+
 struct ModelComponent {
-    EvModel* model{};
+    EvMesh* mesh = nullptr;
+    TextureSet* textureSet = nullptr;
     glm::vec3 scale{1.0f, 1.0f, 1.0f};
+    glm::vec2 textureScale{1.0f, 1.0f};
     glm::mat4 transform{1.0f};
 };
 
@@ -27,8 +34,10 @@ class RenderSystem : public System
     std::unique_ptr<EvPostPass> postPass;
     std::unique_ptr<EvOverlay> overlay;
 
-    std::vector<std::unique_ptr<EvModel>> createdModels;
+    std::vector<std::unique_ptr<EvMesh>> createdMeshes;
     std::vector<std::unique_ptr<EvTexture>> createdTextures;
+    std::vector<std::unique_ptr<TextureSet>> createdTextureSets;
+
 
     void createSwapchain();
 
@@ -39,6 +48,10 @@ class RenderSystem : public System
     void recreateSwapchain();
 
 public:
+    EvTexture* whiteTexture;
+    EvTexture* blueTexture;
+    TextureSet* defaultTextureSet;
+
     RenderSystem(EvDevice& device);
     ~RenderSystem();
 
@@ -48,7 +61,9 @@ public:
 
     Signature GetSignature() const override;
     inline EvSwapchain* getSwapchain() const { assert(swapchain); return swapchain.get(); }
-    EvModel* createModel(const std::string& filename, const EvTexture* texture);
+
+    EvMesh* loadMesh(const std::string& filename, std::string* diffuseTextureFile = nullptr, std::string* normalTextureFile = nullptr);
+    TextureSet* createTextureSet(EvTexture* diffuseTexture, EvTexture* normalTexture = nullptr);
     EvTexture* createTextureFromIntColor(uint32_t color);
     EvTexture* createTextureFromFile(const std::string& filename);
 };

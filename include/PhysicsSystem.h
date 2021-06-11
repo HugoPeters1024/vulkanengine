@@ -25,6 +25,7 @@ public:
     void linkModelComponent(Entity entity);
     void addIntersectionBoxBody(Entity entity, BoundingBox box);
     void setMass(Entity entity, float mass);
+    void applyForce(Entity entity, glm::vec3 force);
     void setAngularVelocity(Entity entity, glm::vec3 eulerAngles);
     void setWorldGravity(float gravity);
 

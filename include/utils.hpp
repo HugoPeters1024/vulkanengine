@@ -2,6 +2,7 @@
 
 #include "core.h"
 
+
 class NoCopy
 {
 public:
@@ -70,7 +71,7 @@ struct pair_hash {
 };
 
 namespace reactphysics3d {
-    inline Vector3 mkVector3(glm::vec3 v) {
+    inline Vector3 cv(glm::vec3 v) {
         return Vector3(v.x, v.y, v.z);
     }
 };
@@ -82,5 +83,9 @@ namespace glm {
                 cos(phi),
                 sin(theta) * sin(phi)
         );
+    }
+
+    inline vec3 cv(const rp3d::Vector3& v) {
+        return vec3(v.x, v.y, v.z);
     }
 }

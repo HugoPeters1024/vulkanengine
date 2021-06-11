@@ -1,12 +1,12 @@
-#include "EvModel.h"
+#include "EvMesh.h"
 
-EvModel::EvModel(EvDevice &device, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices, BoundingBox bb, const EvTexture *texture)
-        : device(device), boundingBox(bb), texture(texture) {
+EvMesh::EvMesh(EvDevice &device, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices, BoundingBox bb)
+        : device(device), boundingBox(bb) {
     createVertexBuffer(vertices);
     createIndexBuffer(indices);
 }
 
-EvModel::~EvModel() {
+EvMesh::~EvMesh() {
     // Descriptor sets are destroyed when the pool is destroyed
     printf("Destroying index buffer\n");
     vmaDestroyBuffer(device.vmaAllocator, vkIndexBuffer, vkIndexMemory);
@@ -15,7 +15,7 @@ EvModel::~EvModel() {
     vmaDestroyBuffer(device.vmaAllocator, vkVertexBuffer, vkVertexMemory);
 }
 
-void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, std::vector<std::string> *textureFiles, BoundingBox *box) {
+void EvMesh::loadMesh(const std::string &filename, std::vector<Vertex> *vertices, std::vector<uint32_t> *indices, BoundingBox *box, std::string *diffuseTextureFile, std::string *normalTextureFile) {
     *box = BoundingBox::InsideOut();
     tinyobj:: ObjReaderConfig config;
 
@@ -33,7 +33,8 @@ void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertic
     const auto& materials = reader.GetMaterials();
 
     for(const auto& mat : materials) {
-        textureFiles->push_back("./assets/textures/" + mat.diffuse_texname);
+        if (diffuseTextureFile) *diffuseTextureFile = "./assets/textures/" + mat.diffuse_texname;
+        if (normalTextureFile) *normalTextureFile = "./assets/textures/" + mat.normal_texname;
     }
 
     uint indexHead = 0;
@@ -85,7 +86,7 @@ void EvModel::loadModel(const std::string &filename, std::vector<Vertex> *vertic
     printf("Loaded model %s: Vertices: %lu, Indices: %lu\n", filename.c_str(), vertices->size(), indices->size());
 }
 
-void EvModel::createVertexBuffer(const std::vector<Vertex> &vertices) {
+void EvMesh::createVertexBuffer(const std::vector<Vertex> &vertices) {
     vertexCount = static_cast<uint32_t>(vertices.size());
 //    assert(vertexCount > 0 && vertexCount % 3 == 0 && "vertexCount not a multiple of 3");
 
@@ -93,7 +94,7 @@ void EvModel::createVertexBuffer(const std::vector<Vertex> &vertices) {
     device.createDeviceBuffer(bufferSize, (void*)vertices.data(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &vkVertexBuffer, &vkVertexMemory);
 }
 
-void EvModel::createIndexBuffer(const std::vector<uint32_t> &indices) {
+void EvMesh::createIndexBuffer(const std::vector<uint32_t> &indices) {
     indicesCount = static_cast<uint32_t>(indices.size());
     assert(indicesCount > 0 && indicesCount % 3 == 0 && "index count not a multiple of 3");
 
@@ -101,9 +102,7 @@ void EvModel::createIndexBuffer(const std::vector<uint32_t> &indices) {
     device.createDeviceBuffer(bufferSize, (void*)indices.data(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, &vkIndexBuffer, &vkIndexMemory);
 }
 
-void EvModel::bind(VkCommandBuffer commandBuffer) {
-    assert(texture && "Texture must be set");
-    assert(!vkDescriptorSets.empty() && "Descriptor set must have been created");
+void EvMesh::bind(VkCommandBuffer commandBuffer) {
     VkBuffer buffers[] = {vkVertexBuffer};
     VkDeviceSize offsets[] = {0};
 
@@ -111,6 +110,6 @@ void EvModel::bind(VkCommandBuffer commandBuffer) {
     vkCmdBindIndexBuffer(commandBuffer, vkIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 }
 
-void EvModel::draw(VkCommandBuffer commandBuffer) const {
+void EvMesh::draw(VkCommandBuffer commandBuffer) const {
     vkCmdDrawIndexed(commandBuffer, indicesCount, 1, 0, 0, 0);
 }

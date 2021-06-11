@@ -45,7 +45,7 @@ public:
             auto const& systemSignature = m_signatures[type];
 
             if ((signature & systemSignature) == systemSignature) {
-                system->m_entities.insert((entity));
+                system->m_entities.insert(entity);
             } else {
                 system->m_entities.erase(entity);
             }
