@@ -1,36 +1,30 @@
 #include "EvTexture.h"
 
-EvTexture::EvTexture(EvDevice &device, unsigned char *pixels, int width, int height)
+EvTexture::EvTexture(EvDevice &device, unsigned char *pixels, int width, int height, VkFormat format)
     : device(device) {
     mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
     createImage(pixels, width, height);
     createSampler();
 }
 
-std::unique_ptr<EvTexture> EvTexture::fromFile(EvDevice &device, const std::string &filename) {
+std::unique_ptr<EvTexture> EvTexture::fromFile(EvDevice &device, const std::string &filename, VkFormat format) {
     unsigned char* pixels;
     int width, height;
     loadFile(filename, &pixels, &width, &height);
-    auto ret = std::make_unique<EvTexture>(device, pixels, width, height);
+    auto ret = std::make_unique<EvTexture>(device, pixels, width, height, format);
     stbi_image_free(pixels);
     return std::move(ret);
 }
 
 std::unique_ptr<EvTexture> EvTexture::fromIntColor(EvDevice &device, uint32_t color) {
+    union {
+        uint32_t dcolor;
+        uchar data[4];
+    } packed{};
+    packed.dcolor = color;
     int width = 1;
     int height = 1;
-    return std::make_unique<EvTexture>(device, reinterpret_cast<unsigned char*>(&color), width, height);
-}
-
-std::unique_ptr<EvTexture> EvTexture::fromVec4Color(EvDevice &device, glm::vec4 color) {
-    int width = 1;
-    int height = 1;
-    unsigned char pixels[4];
-    pixels[0] = static_cast<char>(std::clamp(color.r * 256.0f, 0.0f, 255.0f));
-    pixels[1] = static_cast<char>(std::clamp(color.g * 256.0f, 0.0f, 255.0f));
-    pixels[2] = static_cast<char>(std::clamp(color.b * 256.0f, 0.0f, 255.0f));
-    pixels[3] = static_cast<char>(std::clamp(color.a * 256.0f, 0.0f, 255.0f));
-    return std::make_unique<EvTexture>(device, pixels, width, height);
+    return std::make_unique<EvTexture>(device, packed.data, width, height, VK_FORMAT_R8G8B8A8_UNORM);
 }
 
 EvTexture::~EvTexture() {
@@ -60,7 +54,7 @@ void EvTexture::createImage(unsigned char* pixels, int width, int height) {
     memcpy(data, pixels, static_cast<size_t>(imageSize));
     vmaUnmapMemory(device.vmaAllocator, stagingBufferMemory);
 
-    auto format = VK_FORMAT_R8G8B8A8_SRGB;
+    auto format = VK_FORMAT_R8G8B8A8_UNORM;
     auto imageInfo = vks::initializers::imageCreateInfo(width, height, format,
                                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     imageInfo.mipLevels = mipLevels;

@@ -13,7 +13,7 @@ layout (push_constant) uniform Push {
     vec3 camPos;
 } push;
 
-vec3 lightPos = vec3(5, -4, 6);
+vec3 lightPos = vec3(0, -1, 0);
 vec3 lightColor = vec3(17,17, 15);
 
 void main() {
@@ -35,7 +35,7 @@ void main() {
 
     vec3 E = normalize(position - push.camPos);
     vec3 R = normalize(reflect(toLight, normal));
-    float specular = 4.0f * pow(max(0.0f, dot(E, R)), 40);
+    float specular = 2.6f * pow(max(0.0f, dot(E, R)), 30);
 
 
     vec3 ambient = vec3(0.01f);

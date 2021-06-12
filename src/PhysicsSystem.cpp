@@ -15,13 +15,13 @@ Signature PhysicsSystem::GetSignature() const {
     return ret;
 }
 
-void PhysicsSystem::Update() {
+void PhysicsSystem::Update(float forceField) {
     world->update(1.0f / 60.0f);
 
     for(const auto& entity : m_entities) {
         auto& physicsComp = m_coordinator->GetComponent<PhysicsComponent>(entity);
-        auto worldPoint = physicsComp.rigidBody->getWorldPoint(rp3::Vector3(0,0,0));
-        applyForce(entity, glm::cv(-worldPoint) / 3.0f);
+        auto worldPoint = physicsComp.rigidBody->getWorldPoint(rp3::Vector3(0,0,6));
+        applyForce(entity, glm::cv(-worldPoint) * forceField);
 
         if (physicsComp.transformResult != nullptr) {
             rp3::Transform transform = physicsComp.rigidBody->getTransform();

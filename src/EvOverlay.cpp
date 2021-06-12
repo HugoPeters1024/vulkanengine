@@ -78,6 +78,7 @@ void EvOverlay::NewFrame() {
         ImGui::Text("fps: %f", uiInfo.fps);
         ImGui::SliderFloat("gravity", &uiInfo.gravity, -10.0f, 10.0f);
         ImGui::SliderFloat("texScale", &uiInfo.floorScale, 0.01f, 10.0f);
+        ImGui::SliderFloat("forceField", &uiInfo.forceField, 0, 3);
     }
     ImGui::End();
 

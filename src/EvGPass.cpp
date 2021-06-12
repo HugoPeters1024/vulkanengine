@@ -135,7 +135,7 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
 }
 
 void EvGPass::createDescriptorSetLayout() {
-    VkDescriptorSetLayoutBinding textureBinding {
+    VkDescriptorSetLayoutBinding albedoBinding {
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
@@ -143,7 +143,15 @@ void EvGPass::createDescriptorSetLayout() {
         .pImmutableSamplers = nullptr,
     };
 
-    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {textureBinding};
+    VkDescriptorSetLayoutBinding normalBinding {
+            .binding = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pImmutableSamplers = nullptr,
+    };
+
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {albedoBinding, normalBinding};
 
     VkDescriptorSetLayoutCreateInfo layoutInfo {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,

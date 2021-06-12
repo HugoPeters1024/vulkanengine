@@ -15,9 +15,9 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
                                             composePass->getComposedViews());
     overlay = std::make_unique<EvOverlay>(device, postPass->getRenderPass(), nrImages);
 
-    whiteTexture = createTextureFromIntColor(0xffffff);
-    blueTexture = createTextureFromIntColor((0x0000ff));
-    defaultTextureSet = createTextureSet(whiteTexture, blueTexture);
+    m_whiteTexture = createTextureFromIntColor(0xffffff);
+    m_normalTexture = createTextureFromIntColor((makeRGBA(128, 128, 255, 0)));
+    defaultTextureSet = createTextureSet(m_whiteTexture, m_normalTexture);
 }
 
 RenderSystem::~RenderSystem() {
@@ -151,9 +151,10 @@ EvMesh * RenderSystem::loadMesh(const std::string &filename, std::string *diffus
 
 TextureSet *RenderSystem::createTextureSet(EvTexture *diffuseTexture, EvTexture *normalTexture) {
     assert(diffuseTexture);
+
     createdTextureSets.push_back(std::make_unique<TextureSet>());
     auto tset = createdTextureSets.back().get();
-    if (!normalTexture) normalTexture = blueTexture;
+    if (!normalTexture) normalTexture = m_normalTexture;
     tset->descriptorSets.resize(swapchain->vkImages.size());
 
     std::vector<VkDescriptorSetLayout> layouts(tset->descriptorSets.size(), gPass->getDescriptorSetLayout());
@@ -166,11 +167,11 @@ TextureSet *RenderSystem::createTextureSet(EvTexture *diffuseTexture, EvTexture 
 
     vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, tset->descriptorSets.data()));
 
-    auto diffuseDescriptor = diffuseTexture->getDescriptorInfo();
+    auto albedoDescriptor = diffuseTexture->getDescriptorInfo();
     auto normalDescriptor = normalTexture->getDescriptorInfo();
 
     for(int i=0; i<swapchain->vkImages.size(); i++) {
-        std::array<VkWriteDescriptorSet,1> descriptorWrites {
+        std::array<VkWriteDescriptorSet,2> descriptorWrites {
                 VkWriteDescriptorSet {
                         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                         .dstSet = tset->descriptorSets[i],
@@ -178,7 +179,16 @@ TextureSet *RenderSystem::createTextureSet(EvTexture *diffuseTexture, EvTexture 
                         .dstArrayElement = 0,
                         .descriptorCount = 1,
                         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .pImageInfo = &diffuseDescriptor,
+                        .pImageInfo = &albedoDescriptor,
+                },
+                VkWriteDescriptorSet {
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = tset->descriptorSets[i],
+                        .dstBinding = 1,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        .pImageInfo = &normalDescriptor,
                 },
         };
 
@@ -196,9 +206,9 @@ EvTexture* RenderSystem::createTextureFromIntColor(uint32_t color) {
     return createdTextures.back().get();
 }
 
-EvTexture *RenderSystem::createTextureFromFile(const std::string &filename) {
+EvTexture *RenderSystem::createTextureFromFile(const std::string &filename, VkFormat format) {
     printf("Loading texture %s\n", filename.c_str());
-    createdTextures.push_back(EvTexture::fromFile(device, filename));
+    createdTextures.push_back(EvTexture::fromFile(device, filename, format));
     return createdTextures.back().get();
 }
 

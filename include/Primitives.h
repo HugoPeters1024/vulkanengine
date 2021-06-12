@@ -27,6 +27,7 @@ struct Vertex {
     glm::vec3 position;
     glm::vec2 uv;
     glm::vec3 normal;
+    glm::vec3 tangent;
 
     bool operator ==(const Vertex& o) const {
         return position == o.position && uv == o.uv && normal == o.normal;
@@ -61,6 +62,12 @@ struct Vertex {
                     .binding = 0,
                     .format = VK_FORMAT_R32G32B32_SFLOAT,
                     .offset = offsetof(Vertex, normal),
+            },
+            VkVertexInputAttributeDescription {
+                    .location = 3,
+                    .binding = 0,
+                    .format = VK_FORMAT_R32G32B32_SFLOAT,
+                    .offset = offsetof(Vertex, tangent),
             },
         };
     }

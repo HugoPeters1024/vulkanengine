@@ -21,7 +21,7 @@ public:
     ~PhysicsSystem();
     Signature GetSignature() const override;
 
-    void Update();
+    void Update(float forceField);
     void linkModelComponent(Entity entity);
     void addIntersectionBoxBody(Entity entity, BoundingBox box);
     void setMass(Entity entity, float mass);

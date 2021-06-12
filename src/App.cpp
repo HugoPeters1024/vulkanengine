@@ -20,14 +20,15 @@ void App::Run() {
     while (!window.shouldClose()) {
         tick++;
         double startFrame = glfwGetTime();
+        auto& uiinfo = renderSystem->getUIInfo();
+
         window.processEvents();
         inputHelper.swapBuffers();
         camera.handleInput(inputHelper);
-        physicsSystem->Update();
+        physicsSystem->Update(uiinfo.forceField);
         renderSystem->Render(camera);
         time += 0.01f;
         double timePerFrame = glfwGetTime() - startFrame;
-        auto& uiinfo = renderSystem->getUIInfo();
         uiinfo.fps = static_cast<float>(1.0 / timePerFrame);
 
         physicsSystem->setWorldGravity(renderSystem->getUIInfo().gravity);
@@ -53,13 +54,14 @@ void App::createECSSystems() {
 }
 
 void App::createWorld() {
-    auto terracottaTex = renderSystem->createTextureFromFile("assets/textures/terracotta.jpg");
+    auto terracottaDTex = renderSystem->createTextureFromFile("assets/textures/terracotta.jpg", VK_FORMAT_R8G8B8A8_SRGB);
+    auto terracottaNTex = renderSystem->createTextureFromFile("assets/textures/terracotta_normal.jpg", VK_FORMAT_R8G8B8A8_UNORM);
     cubeMesh = renderSystem->loadMesh("assets/models/cube.obj");
     auto lucyMesh = renderSystem->loadMesh("assets/models/lucy.obj");
 
-    std::string diffuseTexFile, normalTexFile;
+    std::string diffuseTexFile;
     auto florianMesh = renderSystem->loadMesh("assets/models/florian_small.obj", &diffuseTexFile);
-    auto florianTex = renderSystem->createTextureFromFile(diffuseTexFile);
+    auto florianTex = renderSystem->createTextureFromFile(diffuseTexFile, VK_FORMAT_R8G8B8A8_SRGB);
     auto florianTexSet = renderSystem->createTextureSet(florianTex);
 
     addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6), glm::vec2(1.0f, 1.0f));
@@ -67,7 +69,7 @@ void App::createWorld() {
     auto lucy = addInstance(lucyMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.1f), glm::vec3(0.2, -3, 6.01), glm::vec2(1.0f));
     auto florian = addInstance(florianMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.1f), glm::vec3(2.2, -3, 6.01), glm::vec2(1.0f), florianTexSet);
     physicsSystem->setMass(florian, 10);
-    floor = addInstance(cubeMesh, rp3::BodyType::STATIC, glm::vec3(25.0f, 0.2f, 25.0f), glm::vec3(0, 4, 6), glm::vec2(8.0f), renderSystem->createTextureSet(terracottaTex));
+    floor = addInstance(cubeMesh, rp3::BodyType::STATIC, glm::vec3(25.0f, 0.2f, 25.0f), glm::vec3(0, 4, 6), glm::vec2(8.0f), renderSystem->createTextureSet(terracottaDTex, terracottaNTex));
     physicsSystem->setMass(lucy, 10);
    // physicsSystem->setAngularVelocity(floor, glm::vec3(1.f,0,  0));
 }

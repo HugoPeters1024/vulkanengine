@@ -43,6 +43,8 @@ void EvMesh::loadMesh(const std::string &filename, std::vector<Vertex> *vertices
     for(const auto& shape : shapes) {
         for(size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
             assert(shape.mesh.num_face_vertices[f] == 3 && "Plz only triangles for now");
+
+            Vertex triangle[3];
             for(size_t v = 0; v<3; v++) {
                 const auto& idx = shape.mesh.indices[f * 3 + v];
 
@@ -59,7 +61,7 @@ void EvMesh::loadMesh(const std::string &filename, std::vector<Vertex> *vertices
                     uv[1] = attrib.texcoords[2 * idx.texcoord_index + 1];
                 }
 
-                glm::vec3 normal(0.0f);
+                glm::vec3 normal(0.0f, 0.0f, 1.0f);
 
                 if (idx.normal_index != -1) {
                     normal[0] = attrib.normals[3 * idx.normal_index + 0];
@@ -67,11 +69,33 @@ void EvMesh::loadMesh(const std::string &filename, std::vector<Vertex> *vertices
                     normal[2] = attrib.normals[3 * idx.normal_index + 2];
                 }
 
-                Vertex vertex { vpos, uv, normal };
+                glm::vec3 tangent = glm::make_any_perp(normal);
+                triangle[v] = Vertex { vpos, uv, normal, tangent };
+            }
+
+            // calculate the tangent if possible
+            {
+                const auto edge1 = triangle[1].position - triangle[0].position;
+                const auto edge2 = triangle[2].position - triangle[0].position;
+                const auto deltaUV1 = triangle[1].uv - triangle[0].uv;
+                const auto deltaUV2 = triangle[2].uv - triangle[0].uv;
+
+                const float invr = deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y;
+                if (invr > 0.00001f) {
+                    const float r = 1.0f / invr;
+                    const auto tangent = r * (edge1 * deltaUV2.y - edge2 * deltaUV1.y);
+
+                    triangle[0].tangent = tangent;
+                    triangle[1].tangent = tangent;
+                    triangle[2].tangent = tangent;
+                }
+            }
+
+            // insert triangle in the buffers
+            for(const auto& vertex : triangle) {
                 if (indexMap.find(vertex) == indexMap.end()) {
                     indexMap.insert({vertex, indexHead++});
                 }
-
                 indices->push_back(indexMap[vertex]);
             }
         }

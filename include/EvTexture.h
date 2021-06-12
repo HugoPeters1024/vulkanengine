@@ -16,10 +16,9 @@ class EvTexture : NoCopy {
     void createSampler();
 
 public:
-    EvTexture(EvDevice& device, unsigned char* pixels, int width, int height);
-    static std::unique_ptr<EvTexture> fromFile(EvDevice& device, const std::string& filename);
+    EvTexture(EvDevice& device, unsigned char* pixels, int width, int height, VkFormat format);
+    static std::unique_ptr<EvTexture> fromFile(EvDevice& device, const std::string& filename, VkFormat format);
     static std::unique_ptr<EvTexture> fromIntColor(EvDevice& device, uint32_t color);
-    static std::unique_ptr<EvTexture> fromVec4Color(EvDevice& device, glm::vec4 color);
     ~EvTexture();
 
     VkDescriptorImageInfo getDescriptorInfo() const;

@@ -51,7 +51,7 @@ inline std::vector<char> readFile(const std::string& filepath) {
     std::ifstream file(filepath, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open file: " + filepath);
-    }
+   }
 
     size_t fileSize = static_cast<size_t>(file.tellg());
     std::vector<char> buffer(fileSize);
@@ -70,6 +70,10 @@ struct pair_hash {
     }
 };
 
+inline uint32_t makeRGBA(uchar r, uchar g, uchar b, uchar a) {
+    return a << 24 | b << 16 | g << 8 | r;
+}
+
 namespace reactphysics3d {
     inline Vector3 cv(glm::vec3 v) {
         return Vector3(v.x, v.y, v.z);
@@ -87,5 +91,13 @@ namespace glm {
 
     inline vec3 cv(const rp3d::Vector3& v) {
         return vec3(v.x, v.y, v.z);
+    }
+
+    inline vec3 make_any_perp(const vec3& v) {
+        if (v.x > 0.01f) {
+            return vec3(v.y, -v.x, v.z);
+        } else {
+            return vec3(v.x, -v.z, v.y);
+        }
     }
 }

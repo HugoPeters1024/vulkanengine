@@ -1,5 +1,8 @@
 #pragma once
 
+// Type aliases
+typedef unsigned char uchar;
+
 // STL
 #include <set>
 #include <unordered_map>
@@ -49,6 +52,7 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include <glm/gtx/hash.hpp>
+#include <glm/gtx/perpendicular.hpp>
 
 // OTHER UTILS
 #include "utils.hpp"

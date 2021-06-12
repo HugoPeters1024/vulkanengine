@@ -48,8 +48,8 @@ class RenderSystem : public System
     void recreateSwapchain();
 
 public:
-    EvTexture* whiteTexture;
-    EvTexture* blueTexture;
+    EvTexture* m_whiteTexture;
+    EvTexture* m_normalTexture;
     TextureSet* defaultTextureSet;
 
     RenderSystem(EvDevice& device);
@@ -65,5 +65,5 @@ public:
     EvMesh* loadMesh(const std::string& filename, std::string* diffuseTextureFile = nullptr, std::string* normalTextureFile = nullptr);
     TextureSet* createTextureSet(EvTexture* diffuseTexture, EvTexture* normalTexture = nullptr);
     EvTexture* createTextureFromIntColor(uint32_t color);
-    EvTexture* createTextureFromFile(const std::string& filename);
+    EvTexture* createTextureFromFile(const std::string& filename, VkFormat format);
 };
