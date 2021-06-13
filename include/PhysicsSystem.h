@@ -20,6 +20,8 @@ public:
     PhysicsSystem();
     ~PhysicsSystem();
     Signature GetSignature() const override;
+    void EntityDestroyed(Entity entity) override;
+
 
     void Update(float forceField);
     void linkModelComponent(Entity entity);

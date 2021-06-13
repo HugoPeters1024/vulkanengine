@@ -18,15 +18,26 @@ Signature PhysicsSystem::GetSignature() const {
 void PhysicsSystem::Update(float forceField) {
     world->update(1.0f / 60.0f);
 
+    std::vector<Entity> killList{};
+
     for(const auto& entity : m_entities) {
         auto& physicsComp = m_coordinator->GetComponent<PhysicsComponent>(entity);
-        auto worldPoint = physicsComp.rigidBody->getWorldPoint(rp3::Vector3(0,0,6));
-        applyForce(entity, glm::cv(-worldPoint) * forceField);
+        auto worldPoint = glm::cv(physicsComp.rigidBody->getWorldPoint(rp3::Vector3(0,0,6)));
+        float distFromOrigin = glm::length(worldPoint);
+        applyForce(entity, forceField * -worldPoint / (distFromOrigin + 1.0f));
 
         if (physicsComp.transformResult != nullptr) {
             rp3::Transform transform = physicsComp.rigidBody->getTransform();
             transform.getOpenGLMatrix((float*)physicsComp.transformResult);
         }
+
+        if (distFromOrigin > 100) {
+            killList.push_back(entity);
+        }
+    }
+
+    for(const auto& entity : killList) {
+        m_coordinator->DestroyEntity(entity);
     }
 }
 
@@ -77,4 +88,9 @@ void PhysicsSystem::setAngularVelocity(Entity entity, glm::vec3 eulerAngles) {
 
 void PhysicsSystem::setWorldGravity(float gravity) {
     world->setGravity(rp3::Vector3(0, -gravity, 0));
+}
+
+void PhysicsSystem::EntityDestroyed(Entity entity) {
+    auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
+    world->destroyRigidBody(physics.rigidBody);
 }

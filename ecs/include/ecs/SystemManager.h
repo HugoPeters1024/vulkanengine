@@ -34,6 +34,7 @@ public:
     void EntityDestroyed(Entity entity) {
         for (auto const& pair : m_systems) {
             auto const& system = pair.second;
+            system->EntityDestroyed(entity);
             system->m_entities.erase(entity);
         }
     }

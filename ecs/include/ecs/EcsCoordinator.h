@@ -24,9 +24,9 @@ public:
     }
 
     void DestroyEntity(Entity entity) {
+        m_systemManager->EntityDestroyed(entity);
         m_entityManager->DestroyEntity(entity);
         m_componentManager->EntityDestroyed(entity);
-        m_systemManager->EntityDestroyed(entity);
     }
 
     template<typename T>

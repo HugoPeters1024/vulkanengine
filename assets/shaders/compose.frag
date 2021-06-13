@@ -14,7 +14,7 @@ layout (push_constant) uniform Push {
 } push;
 
 vec3 lightPos = vec3(0, 5, 0);
-vec3 lightColor = vec3(17,17, 15)*2;
+vec3 lightColor = vec3(17,17, 15)*3;
 
 void main() {
     // xyz are position, w is an 10-10-10 uint encoded normal
@@ -30,7 +30,7 @@ void main() {
     vec3 toLight = lightPos - position;
     float lightDist = length(toLight);
     const float a = 0.4f;
-    const float b = 0.6f;
+    const float b = 0.2f;
     float attenuation = 1.0f / (1.0f + a*lightDist + b*lightDist*lightDist);
     toLight /= lightDist;
     float diffuse = pow(max(0.0f, dot(normal, toLight)),2);

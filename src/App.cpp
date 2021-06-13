@@ -35,7 +35,7 @@ void App::Run() {
         auto& floorModel = ecsCoordinator.GetComponent<ModelComponent>(floor);
         floorModel.textureScale = glm::vec2(uiinfo.floorScale);
 
-        if (tick % 10 == 0) {
+        if (tick % 60 == 0) {
             addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 25, 0), glm::vec2(1.0f));
         }
     }

@@ -32,7 +32,7 @@ public:
     }
 
     void RemoveData(Entity entity) {
-        assert(m_entityToIndexMap.find(entity) == m_entityToIndexMap.end());
+        assert(m_entityToIndexMap.find(entity) != m_entityToIndexMap.end());
 
         // Copy element at end into deleted element's place to maintain density
         size_t indexOfRemovedEntity = m_entityToIndexMap[entity];
