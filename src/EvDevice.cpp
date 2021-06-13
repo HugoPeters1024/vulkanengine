@@ -46,6 +46,9 @@ void EvDevice::finalizeInfo() {
     info.deviceExtensions.insert("VK_KHR_get_memory_requirements2");
     info.deviceExtensions.insert("VK_KHR_dedicated_allocation");
 
+    // Flip the y axis to match OpenGL
+    info.deviceExtensions.insert("VK_KHR_maintenance1");
+
 
     window.collectInstanceExtensions(info.instanceExtensions);
 }

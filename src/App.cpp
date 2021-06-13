@@ -36,7 +36,7 @@ void App::Run() {
         floorModel.textureScale = glm::vec2(uiinfo.floorScale);
 
         if (tick % 10 == 0) {
-            addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6), glm::vec2(1.0f));
+            addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 25, 0), glm::vec2(1.0f));
         }
     }
 
@@ -65,13 +65,13 @@ void App::createWorld() {
     auto florianTexSet = renderSystem->createTextureSet(florianTex);
 
     addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 0, 6), glm::vec2(1.0f, 1.0f));
-    addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0.2, -1, 6.1), glm::vec2(1.0f, 1.0f));
-    auto lucy = addInstance(lucyMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.1f), glm::vec3(0.2, -3, 6.01), glm::vec2(1.0f));
-    auto florian = addInstance(florianMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.1f), glm::vec3(2.2, -3, 6.01), glm::vec2(1.0f), florianTexSet);
+    addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0.2, 1, 6.1), glm::vec2(1.0f, 1.0f));
+    auto lucy = addInstance(lucyMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.1f), glm::vec3(0.2, 3, 6.01), glm::vec2(1.0f));
+    auto florian = addInstance(florianMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.1f), glm::vec3(2.2, 3, 6.01), glm::vec2(1.0f), florianTexSet);
     physicsSystem->setMass(florian, 10);
-    floor = addInstance(cubeMesh, rp3::BodyType::STATIC, glm::vec3(25.0f, 0.2f, 25.0f), glm::vec3(0, 4, 6), glm::vec2(8.0f), renderSystem->createTextureSet(terracottaDTex, terracottaNTex));
+    floor = addInstance(cubeMesh, rp3::BodyType::KINEMATIC, glm::vec3(25.0f, 0.2f, 25.0f), glm::vec3(0, -4, 6), glm::vec2(8.0f), renderSystem->createTextureSet(terracottaDTex, terracottaNTex));
     physicsSystem->setMass(lucy, 10);
-   // physicsSystem->setAngularVelocity(floor, glm::vec3(1.f,0,  0));
+    //physicsSystem->setAngularVelocity(floor, glm::vec3(0.0f,0, 0.1f));
 }
 
 Entity App::addInstance(EvMesh *mesh, rp3::BodyType bodyType, glm::vec3 scale, glm::vec3 position, glm::vec2 textureScale, TextureSet *textureSet) {

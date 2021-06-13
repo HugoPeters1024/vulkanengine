@@ -285,12 +285,12 @@ void EvComposePass::render(VkCommandBuffer commandBuffer, uint32_t imageIdx, con
         .pClearValues = clearValues.data(),
     };
     VkViewport viewport {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = static_cast<float>(framebuffer.width),
-        .height = static_cast<float>(framebuffer.height),
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f,
+            .x = 0.0f,
+            .y = static_cast<float>(framebuffer.height),
+            .width = static_cast<float>(framebuffer.width),
+            .height = -static_cast<float>(framebuffer.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
     };
     VkRect2D scissor{{0,0}, {framebuffer.width, framebuffer.height}};
 

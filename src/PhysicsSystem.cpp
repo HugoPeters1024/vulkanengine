@@ -76,5 +76,5 @@ void PhysicsSystem::setAngularVelocity(Entity entity, glm::vec3 eulerAngles) {
 }
 
 void PhysicsSystem::setWorldGravity(float gravity) {
-    world->setGravity(rp3::Vector3(0, gravity, 0));
+    world->setGravity(rp3::Vector3(0, -gravity, 0));
 }

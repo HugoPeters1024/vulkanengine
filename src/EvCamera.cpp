@@ -18,8 +18,8 @@ void EvCamera::handleInput(const EvInputHelper &input) {
     if (input.isDown(GLFW_KEY_D)) position += sideWays * MOVE_SPEED;
     if (input.isDown(GLFW_KEY_A)) position -= sideWays * MOVE_SPEED;
 
-    if (input.isDown(GLFW_KEY_UP)) phi = std::clamp(phi + TURN_SPEED, 0.01f, 3.1415926f);
-    if (input.isDown(GLFW_KEY_DOWN)) phi = std::clamp(phi - TURN_SPEED, 0.01f, 3.1415926f);
+    if (input.isDown(GLFW_KEY_UP)) phi = std::clamp(phi - TURN_SPEED, 0.01f, 3.1415926f);
+    if (input.isDown(GLFW_KEY_DOWN)) phi = std::clamp(phi + TURN_SPEED, 0.01f, 3.1415926f);
     if (input.isDown(GLFW_KEY_LEFT)) theta -= TURN_SPEED;
     if (input.isDown(GLFW_KEY_RIGHT)) theta += TURN_SPEED;
 }

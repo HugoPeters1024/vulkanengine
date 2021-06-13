@@ -7,8 +7,7 @@ layout(location = 3) in vec3 vTangent;
 
 layout(location = 0) out vec3 position;
 layout(location = 1) out vec2 uv;
-layout(location = 2) out vec3 normal;
-layout(location = 3) out mat3 TBN;
+layout(location = 2) out mat3 TBN;
 
 layout (push_constant) uniform Lol {
     mat4 camera;
@@ -17,15 +16,16 @@ layout (push_constant) uniform Lol {
 } lol;
 
 void main() {
-    gl_Position = lol.camera * lol.mvp * vec4(vPosition, 1.0f);
+
+    vec4 worldPos = lol.mvp * vec4(vPosition, 1.0f);
+
+    gl_Position = lol.camera * worldPos;
+
     uv = vUv * lol.texScale.xy;
-    normal = normalize((lol.mvp * vec4(vNormal, 0.0f)).xyz);
-    position = (lol.mvp * vec4(vPosition, 1)).xyz;
+    position = worldPos.xyz;
 
-    vec3 vBitangent = cross(vTangent, vNormal);
-
-    vec3 T = normalize((lol.mvp * vec4(vTangent, 0.0f)).xyz);
-    vec3 B = normalize((lol.mvp * vec4(vBitangent, 0.0f)).xyz);
     vec3 N = normalize((lol.mvp * vec4(vNormal, 0.0f)).xyz);
-    TBN = transpose(mat3(B, -T, N));
+    vec3 T = normalize((lol.mvp * vec4(vTangent, 0.0f)).xyz);
+    vec3 B = cross(T, N);
+    TBN = mat3(T, B, N);
 }
