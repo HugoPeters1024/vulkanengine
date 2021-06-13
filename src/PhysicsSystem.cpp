@@ -22,13 +22,17 @@ void PhysicsSystem::Update(float forceField) {
 
     for(const auto& entity : m_entities) {
         auto& physicsComp = m_coordinator->GetComponent<PhysicsComponent>(entity);
-        auto worldPoint = glm::cv(physicsComp.rigidBody->getWorldPoint(rp3::Vector3(0,0,6)));
+        auto worldPoint = glm::cv(physicsComp.rigidBody->getWorldPoint(rp3::Vector3(0,0,0)));
         float distFromOrigin = glm::length(worldPoint);
-        applyForce(entity, forceField * -worldPoint / (distFromOrigin + 1.0f));
+        applyForce(entity, forceField * -(worldPoint + glm::vec3(0, 10, 0)) / (distFromOrigin + 1.0f));
 
         if (physicsComp.transformResult != nullptr) {
             rp3::Transform transform = physicsComp.rigidBody->getTransform();
             transform.getOpenGLMatrix((float*)physicsComp.transformResult);
+        }
+
+        for(const auto& listener : physicsComp.positionListeners) {
+            *listener = worldPoint;
         }
 
         if (distFromOrigin > 100) {
@@ -68,6 +72,12 @@ void PhysicsSystem::addIntersectionBoxBody(Entity entity, BoundingBox box) {
     physics.rigidBody->addCollider(shape, transform);
 }
 
+void PhysicsSystem::addPositionListener(Entity entity, glm::vec3 *dst) {
+    assert(m_coordinator->HasComponent<PhysicsComponent>(entity));
+    auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
+    physics.positionListeners.push_back(dst);
+}
+
 void PhysicsSystem::setMass(Entity entity, float mass) {
     assert(m_coordinator->HasComponent<PhysicsComponent>(entity));
     auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
@@ -93,4 +103,8 @@ void PhysicsSystem::setWorldGravity(float gravity) {
 void PhysicsSystem::EntityDestroyed(Entity entity) {
     auto& physics = m_coordinator->GetComponent<PhysicsComponent>(entity);
     world->destroyRigidBody(physics.rigidBody);
+}
+
+void PhysicsSystem::RegisterStage() {
+    m_coordinator->RegisterComponent<PhysicsComponent>();
 }

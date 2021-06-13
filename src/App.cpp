@@ -36,7 +36,7 @@ void App::Run() {
         floorModel.textureScale = glm::vec2(uiinfo.floorScale);
 
         if (tick % 60 == 0) {
-            addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.3f), glm::vec3(0, 25, 0), glm::vec2(1.0f));
+            auto block = addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(1.0f), glm::vec3(0, 25, 0), glm::vec2(1.0f));
         }
     }
 
@@ -46,10 +46,7 @@ void App::Run() {
 }
 
 void App::createECSSystems() {
-    ecsCoordinator.RegisterComponent<ModelComponent>();
     renderSystem = ecsCoordinator.RegisterSystem<RenderSystem>(device);
-
-    ecsCoordinator.RegisterComponent<PhysicsComponent>();
     physicsSystem = ecsCoordinator.RegisterSystem<PhysicsSystem>();
 }
 

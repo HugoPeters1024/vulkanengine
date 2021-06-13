@@ -41,7 +41,7 @@ void EvComposePass::createBuffer(uint32_t width, uint32_t height, uint32_t nrIma
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     };
 
     VkAttachmentReference composedReference {
@@ -286,9 +286,9 @@ void EvComposePass::render(VkCommandBuffer commandBuffer, uint32_t imageIdx, con
     };
     VkViewport viewport {
             .x = 0.0f,
-            .y = static_cast<float>(framebuffer.height),
+            .y = 0,
             .width = static_cast<float>(framebuffer.width),
-            .height = -static_cast<float>(framebuffer.height),
+            .height = static_cast<float>(framebuffer.height),
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
     };

@@ -230,9 +230,9 @@ void EvPostPass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) con
     };
     VkViewport viewport {
             .x = 0.0f,
-            .y = static_cast<float>(framebuffer.height),
+            .y = 0,
             .width = static_cast<float>(framebuffer.width),
-            .height = -static_cast<float>(framebuffer.height),
+            .height = static_cast<float>(framebuffer.height),
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
     };

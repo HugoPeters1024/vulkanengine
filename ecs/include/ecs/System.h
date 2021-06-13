@@ -11,5 +11,6 @@ public:
     EcsCoordinator* m_coordinator;
 
     virtual Signature GetSignature() const = 0;
+    virtual void RegisterStage() {}
     virtual void EntityDestroyed(Entity entity) {}
 };

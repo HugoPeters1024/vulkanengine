@@ -24,6 +24,10 @@ shader("gpass.frag")
 shader("screenfill.vert")
 
 shader("compose.frag")
+
+shader("forward.vert")
+shader("forward.frag")
+
 shader("post.frag")
 
 add_executable(vulkanray main.cpp ${src})

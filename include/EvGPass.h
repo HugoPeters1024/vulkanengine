@@ -61,6 +61,7 @@ public:
         }
         return ret;
     }
+    inline std::vector<EvFrameBufferAttachment> getDepthAttachments() const { return framebuffer.depths; }
 
     void recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages);
     void startPass(VkCommandBuffer cmdBuffer, uint32_t imageIdx) const;

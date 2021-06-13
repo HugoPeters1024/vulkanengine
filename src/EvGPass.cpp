@@ -48,7 +48,7 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
 
     VkAttachmentDescription depthDescription = defaultDescription;
     depthDescription.format = framebuffer.depths[0].format;
-    depthDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    depthDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     std::array<VkAttachmentDescription, 3> attachmentDescriptions{
         positionDescription,
@@ -184,7 +184,7 @@ void EvGPass::createPipeline() {
     fragShader = device.createShaderModule("assets/shaders_bin/gpass.frag.spv");
 
     auto inputAssembly = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
-    auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+    auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
     auto blendAttachmentPos = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
     auto blendAttachmentAlbedo = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
     std::array<VkPipelineColorBlendAttachmentState, 2> blendAttachments { blendAttachmentPos, blendAttachmentAlbedo };

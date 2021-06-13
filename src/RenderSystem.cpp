@@ -1,6 +1,7 @@
 #include "RenderSystem.h"
 
 RenderSystem::RenderSystem(EvDevice &device) : device(device) {
+
     createSwapchain();
 
     allocateCommandBuffers();
@@ -10,6 +11,9 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     composePass = std::make_unique<EvComposePass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
                                                   gPass->getPosViews(),
                                                   gPass->getAlbedoViews());
+    forwardPass = std::make_unique<EvForwardPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
+                                                  gPass->getDepthAttachments(),
+                                                  composePass->getComposedAttachments());
     postPass = std::make_unique<EvPostPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
                                             swapchain->surfaceFormat.format, swapchain->vkImageViews,
                                             composePass->getComposedViews());
@@ -18,6 +22,7 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     m_whiteTexture = createTextureFromIntColor(0xffffff);
     m_normalTexture = createTextureFromIntColor((makeRGBA(128, 128, 255, 0)));
     defaultTextureSet = createTextureSet(m_whiteTexture, m_normalTexture);
+    m_cubeMesh = loadMesh("./assets/models/cube.obj");
 }
 
 RenderSystem::~RenderSystem() {
@@ -87,6 +92,25 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
 
     recordGBufferCommands(commandBuffer, imageIndex, camera);
     composePass->render(commandBuffer, imageIndex, camera);
+    forwardPass->beginPass(commandBuffer, imageIndex);
+    m_cubeMesh->bind(commandBuffer);
+    for (const auto& entity : lightSubSystem->m_entities) {
+        auto& lightComp = m_coordinator->GetComponent<LightComponent>(entity);
+        auto transform = glm::translate(glm::mat4(1.0f), lightComp.position);
+        ForwardPush push{
+            .camera = camera.getVPMatrix(device.window.getAspectRatio()),
+            .mvp = transform,
+        };
+        vkCmdPushConstants(
+                commandBuffer,
+                gPass->getPipelineLayout(),
+                VK_SHADER_STAGE_VERTEX_BIT,
+                0,
+                sizeof(push),
+                &push);
+        m_cubeMesh->draw(commandBuffer);
+    }
+    forwardPass->endPass(commandBuffer);
     postPass->beginPass(commandBuffer, imageIndex);
     overlay->Draw(commandBuffer);
     postPass->endPass(commandBuffer);
@@ -102,6 +126,7 @@ void RenderSystem::recreateSwapchain() {
     uint32_t nrImages = swapchain->vkImages.size();
     gPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages);
     composePass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gPass->getPosViews(), gPass->getAlbedoViews());
+    forwardPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gPass->getDepthAttachments(), composePass->getComposedAttachments());
     postPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, composePass->getComposedViews(), swapchain->surfaceFormat.format, swapchain->vkImageViews);
 }
 
@@ -212,5 +237,10 @@ EvTexture *RenderSystem::createTextureFromFile(const std::string &filename, VkFo
     return createdTextures.back().get();
 }
 
+void RenderSystem::RegisterStage() {
+    m_coordinator->RegisterComponent<ModelComponent>();
+    m_coordinator->RegisterComponent<LightComponent>();
+    lightSubSystem = m_coordinator->RegisterSystem<LightSystem>();
+}
 
 

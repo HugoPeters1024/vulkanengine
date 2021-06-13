@@ -35,13 +35,14 @@ public:
     }
 
     template<typename T>
-    void AddComponent(Entity entity, T component) {
+    T& AddComponent(Entity entity, T component) {
         m_componentManager->AddComponent<T>(entity, component);
 
         auto signature = m_entityManager->GetSignature(entity);
         signature.set(m_componentManager->GetComponentType<T>(), true);
         m_entityManager->SetSignature(entity, signature);
         m_systemManager->EntitySignatureChanged(entity, signature);
+        GetComponent<T>(entity);
     }
 
     template<typename T>
@@ -73,6 +74,9 @@ public:
         auto system = m_systemManager->RegisterSystem<T>(std::forward<Args>(args)...);
         // set reference to myself
         system->m_coordinator = this;
+
+        // Run any sub registration
+        system->RegisterStage();
 
         // now call upons the signature
         SetSystemSignature<T>(system->GetSignature());
