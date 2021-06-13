@@ -23,6 +23,7 @@ shader("gpass.frag")
 
 shader("screenfill.vert")
 
+shader("compose.vert")
 shader("compose.frag")
 
 shader("forward.vert")

@@ -42,7 +42,7 @@ public:
         signature.set(m_componentManager->GetComponentType<T>(), true);
         m_entityManager->SetSignature(entity, signature);
         m_systemManager->EntitySignatureChanged(entity, signature);
-        GetComponent<T>(entity);
+        return GetComponent<T>(entity);
     }
 
     template<typename T>

@@ -3,6 +3,16 @@
 #include "core.h"
 #include "EvDevice.h"
 #include "EvCamera.h"
+#include "EvMesh.h"
+
+struct ComposePush {
+    glm::mat4 mvp;
+    glm::mat4 camera;
+    glm::vec4 camPos;
+    glm::vec4 lightPos;
+    glm::vec4 lightColor;
+    glm::vec4 invScreenSizeAttenuation;
+};
 
 class EvComposePass {
 private:
@@ -51,5 +61,6 @@ public:
     inline std::vector<EvFrameBufferAttachment> getComposedAttachments() const { return framebuffer.composeds; }
 
     void recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages, const std::vector<VkImageView>& posViews, const std::vector<VkImageView>& albedoViews);
-    void render(VkCommandBuffer cmdBuffer, uint32_t imageIdx, const EvCamera& camera) const;
+    void beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera& camera) const;
+    void endPass(VkCommandBuffer commandBuffer);
 };

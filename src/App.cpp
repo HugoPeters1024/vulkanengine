@@ -36,7 +36,7 @@ void App::Run() {
         floorModel.textureScale = glm::vec2(uiinfo.floorScale);
 
         if (tick % 60 == 0) {
-            auto block = addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(1.0f), glm::vec3(0, 25, 0), glm::vec2(1.0f));
+            auto block = addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.5f), glm::vec3(0, 25, 0), glm::vec2(1.0f));
         }
     }
 
@@ -68,6 +68,12 @@ void App::createWorld() {
     physicsSystem->setMass(florian, 10);
     floor = addInstance(cubeMesh, rp3::BodyType::KINEMATIC, glm::vec3(25.0f, 0.2f, 25.0f), glm::vec3(0, -4, 6), glm::vec2(8.0f), renderSystem->createTextureSet(terracottaDTex, terracottaNTex));
     physicsSystem->setMass(lucy, 10);
+
+    light = ecsCoordinator.CreateEntity();
+    ecsCoordinator.AddComponent<LightComponent>(light, LightComponent {
+        .position = glm::vec3(0, 25, 0),
+        .color = glm::vec3(80),
+    });
     //physicsSystem->setAngularVelocity(floor, glm::vec3(0.0f,0, 0.1f));
 }
 

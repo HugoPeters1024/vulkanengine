@@ -24,7 +24,7 @@ void PhysicsSystem::Update(float forceField) {
         auto& physicsComp = m_coordinator->GetComponent<PhysicsComponent>(entity);
         auto worldPoint = glm::cv(physicsComp.rigidBody->getWorldPoint(rp3::Vector3(0,0,0)));
         float distFromOrigin = glm::length(worldPoint);
-        applyForce(entity, forceField * -(worldPoint + glm::vec3(0, 10, 0)) / (distFromOrigin + 1.0f));
+        applyForce(entity, forceField * -(worldPoint - glm::vec3(0, 10, 0)) / (distFromOrigin + 1.0f));
 
         if (physicsComp.transformResult != nullptr) {
             rp3::Transform transform = physicsComp.rigidBody->getTransform();

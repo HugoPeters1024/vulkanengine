@@ -204,9 +204,9 @@ void EvComposePass::createDescriptorSets(
 
 void EvComposePass::createPipeline() {
     VkPushConstantRange pushConstant {
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(glm::vec3),
+        .size = sizeof(ComposePush),
     };
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo {
@@ -219,12 +219,14 @@ void EvComposePass::createPipeline() {
 
     vkCheck(vkCreatePipelineLayout(device.vkDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
-    vertShader = device.createShaderModule("assets/shaders_bin/screenfill.vert.spv");
+    vertShader = device.createShaderModule("assets/shaders_bin/compose.vert.spv");
     fragShader = device.createShaderModule("assets/shaders_bin/compose.frag.spv");
 
     auto inputAssembly = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
-    auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
-    auto blendAttachment = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
+    auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
+    auto blendAttachment = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_TRUE);
+    blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
     auto colorBlend = vks::initializers::pipelineColorBlendStateCreateInfo(1, &blendAttachment);
     auto depthStencil = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_FALSE, VK_FALSE, VK_COMPARE_OP_ALWAYS);
     auto viewport = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
@@ -235,7 +237,10 @@ void EvComposePass::createPipeline() {
             vks::initializers::pipelineShaderStageCreateInfo(vertShader, VK_SHADER_STAGE_VERTEX_BIT),
             vks::initializers::pipelineShaderStageCreateInfo(fragShader, VK_SHADER_STAGE_FRAGMENT_BIT),
     };
-    auto vertexInput = vks::initializers::pipelineVertexInputStateCreateInfo();
+
+    auto bindingDescriptions= Vertex::getBindingDescriptions();
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    auto vertexInput = vks::initializers::pipelineVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions);
 
     VkGraphicsPipelineCreateInfo pipelineInfo {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -267,7 +272,7 @@ void EvComposePass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_
 
 
 
-void EvComposePass::render(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera& camera) const {
+void EvComposePass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera& camera) const {
     assert(imageIdx >= 0 && imageIdx < framebuffer.vkFrameBuffers.size());
     std::array<VkClearValue, 1> clearValues {
         VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
@@ -286,9 +291,9 @@ void EvComposePass::render(VkCommandBuffer commandBuffer, uint32_t imageIdx, con
     };
     VkViewport viewport {
             .x = 0.0f,
-            .y = 0,
+            .y = static_cast<float>(framebuffer.height),
             .width = static_cast<float>(framebuffer.width),
-            .height = static_cast<float>(framebuffer.height),
+            .height = -static_cast<float>(framebuffer.height),
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
     };
@@ -298,11 +303,15 @@ void EvComposePass::render(VkCommandBuffer commandBuffer, uint32_t imageIdx, con
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec3), &camera.position);
+//    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec3), &camera.position);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[imageIdx], 0, nullptr);
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+ //   vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
+  //  vkCmdEndRenderPass(commandBuffer);
+}
+
+void EvComposePass::endPass(VkCommandBuffer commandBuffer) {
     vkCmdEndRenderPass(commandBuffer);
 }
 

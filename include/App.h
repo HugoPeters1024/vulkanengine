@@ -26,6 +26,7 @@ class App {
     std::shared_ptr<PhysicsSystem> physicsSystem;
 
     Entity floor;
+    Entity light;
     EvMesh* cubeMesh;
 
     void createECSSystems();

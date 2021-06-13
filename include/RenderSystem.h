@@ -26,6 +26,7 @@ struct ModelComponent {
 
 struct LightComponent {
     glm::vec3 position;
+    glm::vec3 color;
 };
 
 
@@ -57,6 +58,7 @@ class RenderSystem : public System
     std::vector<std::unique_ptr<TextureSet>> createdTextureSets;
 
     EvMesh* m_cubeMesh;
+    EvMesh* m_sphereMesh;
 
 
     void createSwapchain();
