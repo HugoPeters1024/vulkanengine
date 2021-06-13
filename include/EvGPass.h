@@ -14,12 +14,12 @@ private:
     struct GBuffer : public EvFrameBuffer {
         std::vector<EvFrameBufferAttachment> positions;
         std::vector<EvFrameBufferAttachment> albedos;
-        EvFrameBufferAttachment depth;
+        std::vector<EvFrameBufferAttachment> depths;
 
         virtual void destroy(EvDevice& device) override {
             for(auto& position : positions) position.destroy(device);
             for(auto& albedo : albedos) albedo.destroy(device);
-            depth.destroy(device);
+            for(auto& depth : depths) depth.destroy(device);
             EvFrameBuffer::destroy(device);
         }
     } framebuffer;
@@ -51,6 +51,13 @@ public:
         std::vector<VkImageView> ret{};
         for(const auto& albedo : framebuffer.albedos) {
             ret.push_back(albedo.view);
+        }
+        return ret;
+    }
+    inline std::vector<VkImageView> getDepthViews() const {
+        std::vector<VkImageView> ret{};
+        for(const auto& depth : framebuffer.depths) {
+            ret.push_back(depth.view);
         }
         return ret;
     }

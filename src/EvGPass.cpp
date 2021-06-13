@@ -22,12 +22,13 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
 
     framebuffer.positions.resize(nrImages);
     framebuffer.albedos.resize(nrImages);
+    framebuffer.depths.resize(nrImages);
 
     for(int i=0; i<nrImages; i++) {
         device.createAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.positions[i]);
         device.createAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.albedos[i]);
+        device.createAttachment(device.findDepthFormat(), VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.depths[i]);
     }
-    device.createAttachment(device.findDepthFormat(), VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.depth);
 
     VkAttachmentDescription defaultDescription {
             .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -46,8 +47,8 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
     albedoDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentDescription depthDescription = defaultDescription;
-    depthDescription.format = framebuffer.depth.format;
-    depthDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthDescription.format = framebuffer.depths[0].format;
+    depthDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
     std::array<VkAttachmentDescription, 3> attachmentDescriptions{
         positionDescription,
@@ -117,7 +118,7 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
         std::array<VkImageView, 3> attachments{
                 framebuffer.positions[i].view,
                 framebuffer.albedos[i].view,
-                framebuffer.depth.view,
+                framebuffer.depths[i].view,
         };
 
         VkFramebufferCreateInfo framebufferInfo{
