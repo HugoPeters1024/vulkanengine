@@ -2,17 +2,25 @@
 
 #include "math.glsl"
 
-layout(binding = 0) uniform sampler2D texPos;
-layout(binding = 1) uniform sampler2D texAlbedo;
+layout(location = 1) in flat uint instanceID;
 
 layout(location = 0) out vec4 outColor;
 
-layout (push_constant) uniform Push {
-    mat4 mvp;
-    mat4 camera;
-    vec4 camPos;
+layout(binding = 0) uniform sampler2D texPos;
+layout(binding = 1) uniform sampler2D texAlbedo;
+
+struct LightData {
     vec4 lightPos;
     vec4 lightColor;
+};
+
+layout(binding = 2) readonly buffer LightDataBuffer {
+    LightData data[];
+} lightData;
+
+layout (push_constant) uniform Push {
+    mat4 camera;
+    vec4 camPos;
     vec4 invScreenSizeAttenuation;
 } push;
 
@@ -28,14 +36,12 @@ void main() {
     vec3 position = positionNormal.xyz;
     vec3 albedo = texture(texAlbedo, uv).xyz;
 
-    vec3 toLight = push.lightPos.xyz - position;
+    vec3 toLight = lightData.data[instanceID].lightPos.xyz - position;
     float lightDist = length(toLight);
-    const float a = 0.4f;
-    const float b = 0.2f;
-
     const float linear = push.invScreenSizeAttenuation.z;
     const float quadratic = push.invScreenSizeAttenuation.w;
-    float attenuation = 1.0f / (1.0f + a*lightDist + b*lightDist*lightDist);
+
+    float attenuation = 1.0f / (1.0f + linear*lightDist + quadratic*lightDist*lightDist);
     toLight /= lightDist;
     float diffuse = pow(max(0.0f, dot(normal, toLight)),2);
 
@@ -45,5 +51,5 @@ void main() {
 
 
     vec3 ambient = vec3(0.00f);
-    outColor = vec4(albedo * push.lightColor.xyz * (diffuse + specular) * attenuation + ambient, 1.0f);
+    outColor = vec4(albedo * lightData.data[instanceID].lightColor.xyz * (diffuse + specular) * attenuation + ambient, 1.0f);
 }

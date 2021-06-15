@@ -55,6 +55,8 @@ public:
         return m_componentArray[m_entityToIndexMap[entity]];
     }
 
+    T* GetRawPointer() { return m_componentArray.data(); }
+
     bool HasEntity(Entity entity) {
         return m_entityToIndexMap.find(entity) != m_entityToIndexMap.end();
     }

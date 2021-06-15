@@ -134,6 +134,6 @@ void EvMesh::bind(VkCommandBuffer commandBuffer) {
     vkCmdBindIndexBuffer(commandBuffer, vkIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 }
 
-void EvMesh::draw(VkCommandBuffer commandBuffer) const {
-    vkCmdDrawIndexed(commandBuffer, indicesCount, 1, 0, 0, 0);
+void EvMesh::draw(VkCommandBuffer commandBuffer, uint32_t instanceCount) const {
+    vkCmdDrawIndexed(commandBuffer, indicesCount, instanceCount, 0, 0, 0);
 }

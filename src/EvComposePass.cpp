@@ -4,7 +4,8 @@ EvComposePass::EvComposePass(EvDevice &device, uint32_t width, uint32_t height, 
                              const std::vector<VkImageView> &posViews,
                              const std::vector<VkImageView> &albedoViews)
                              : device(device) {
-    createBuffer(width, height, nrImages);
+    createFramebuffer(width, height, nrImages);
+    device.createHostBuffer(MAX_LIGHTS * sizeof(LightComponent), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &lightDataBuffer, &lightDataBufferMemory);
     createDescriptorSetLayout();
     allocateDescriptorSets(nrImages);
     createDescriptorSets(nrImages, posViews, albedoViews);
@@ -12,6 +13,7 @@ EvComposePass::EvComposePass(EvDevice &device, uint32_t width, uint32_t height, 
 }
 
 EvComposePass::~EvComposePass() {
+    vmaDestroyBuffer(device.vmaAllocator, lightDataBuffer, lightDataBufferMemory);
     vkDestroySampler(device.vkDevice, normalSampler, nullptr);
     vkDestroySampler(device.vkDevice, posSampler, nullptr);
     vkDestroySampler(device.vkDevice, albedoSampler, nullptr);
@@ -23,7 +25,7 @@ EvComposePass::~EvComposePass() {
     vkDestroyPipelineLayout(device.vkDevice, pipelineLayout, nullptr);
 }
 
-void EvComposePass::createBuffer(uint32_t width, uint32_t height, uint32_t nrImages) {
+void EvComposePass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages) {
     assert(nrImages > 0);
     framebuffer.width = width;
     framebuffer.height = height;
@@ -130,7 +132,15 @@ void EvComposePass::createDescriptorSetLayout() {
             .pImmutableSamplers = nullptr,
     };
 
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {posBinding, albedoBinding};
+    VkDescriptorSetLayoutBinding lightDataBinding {
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        .pImmutableSamplers = nullptr,
+    };
+
+    std::array<VkDescriptorSetLayoutBinding, 3> bindings = {posBinding, albedoBinding, lightDataBinding};
 
     VkDescriptorSetLayoutCreateInfo layoutInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -183,12 +193,18 @@ void EvComposePass::createDescriptorSets(
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
 
+        VkDescriptorBufferInfo lightDataDescriptorInfo {
+            .buffer = lightDataBuffer,
+            .offset = 0,
+            .range = MAX_LIGHTS * sizeof(LightComponent),
+        };
+
         std::array<VkDescriptorImageInfo, 2> descriptors{
                 posDescriptorInfo,
                 albedoDescriptorInfo,
         };
 
-        VkWriteDescriptorSet writeDescriptors{
+        VkWriteDescriptorSet writeDescriptorImages{
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                 .dstSet = descriptorSets[i],
                 .dstBinding = 0,
@@ -198,7 +214,19 @@ void EvComposePass::createDescriptorSets(
                 .pImageInfo = descriptors.data(),
         };
 
-        vkUpdateDescriptorSets(device.vkDevice, 1, &writeDescriptors, 0, nullptr);
+        VkWriteDescriptorSet writeDescriptorBuffers{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = descriptorSets[i],
+                .dstBinding = 2,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .pBufferInfo = &lightDataDescriptorInfo,
+        };
+
+        std::array<VkWriteDescriptorSet,2> writes { writeDescriptorImages, writeDescriptorBuffers };
+
+        vkUpdateDescriptorSets(device.vkDevice, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 }
 
@@ -266,7 +294,7 @@ void EvComposePass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_
                                         const std::vector<VkImageView> &posViews,
                                         const std::vector<VkImageView> &albedoViews) {
     framebuffer.destroy(device);
-    createBuffer(width, height, nrImages);
+    createFramebuffer(width, height, nrImages);
     createDescriptorSets(nrImages, posViews, albedoViews);
 }
 
@@ -313,5 +341,14 @@ void EvComposePass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx, 
 
 void EvComposePass::endPass(VkCommandBuffer commandBuffer) {
     vkCmdEndRenderPass(commandBuffer);
+}
+
+
+void EvComposePass::updateLights(LightComponent *data, uint nrLights) {
+    assert(nrLights <= MAX_LIGHTS);
+    void* dstData;
+    vkCheck(vmaMapMemory(device.vmaAllocator, lightDataBufferMemory, &dstData));
+    memcpy(dstData, data, nrLights * sizeof(LightComponent));
+    vmaUnmapMemory(device.vmaAllocator, lightDataBufferMemory);
 }
 

@@ -54,6 +54,11 @@ public:
     }
 
     template<typename T>
+    T* GetComponentArrayData() {
+        return GetComponentArray<T>()->GetRawPointer();
+    }
+
+    template<typename T>
     bool HasComponent(Entity entity) {
         return GetComponentArray<T>()->HasEntity(entity);
     }

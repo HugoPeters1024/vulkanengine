@@ -4,18 +4,17 @@
 #include "EvDevice.h"
 #include "EvCamera.h"
 #include "EvMesh.h"
+#include "Components.h"
 
 struct ComposePush {
-    glm::mat4 mvp;
     glm::mat4 camera;
     glm::vec4 camPos;
-    glm::vec4 lightPos;
-    glm::vec4 lightColor;
     glm::vec4 invScreenSizeAttenuation;
 };
 
 class EvComposePass {
 private:
+    static const uint MAX_LIGHTS = 50;
     EvDevice& device;
     struct ComposeBuffer : public EvFrameBuffer {
         std::vector<EvFrameBufferAttachment> composeds;
@@ -38,7 +37,10 @@ private:
     VkSampler posSampler;
     VkSampler albedoSampler;
 
-    void createBuffer(uint32_t width, uint32_t height, uint32_t nrImages);
+    VkBuffer lightDataBuffer;
+    VmaAllocation lightDataBufferMemory;
+
+    void createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages);
     void createDescriptorSetLayout();
     void allocateDescriptorSets(uint32_t nrImages);
     void createDescriptorSets(uint32_t nrImages, const std::vector<VkImageView>& posViews, const std::vector<VkImageView>& albedoViews);
@@ -63,4 +65,5 @@ public:
     void recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages, const std::vector<VkImageView>& posViews, const std::vector<VkImageView>& albedoViews);
     void beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera& camera) const;
     void endPass(VkCommandBuffer commandBuffer);
+    void updateLights(LightComponent* data, uint nrLights);
 };

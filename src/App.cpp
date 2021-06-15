@@ -69,11 +69,20 @@ void App::createWorld() {
     floor = addInstance(cubeMesh, rp3::BodyType::KINEMATIC, glm::vec3(25.0f, 0.2f, 25.0f), glm::vec3(0, -4, 6), glm::vec2(8.0f), renderSystem->createTextureSet(terracottaDTex, terracottaNTex));
     physicsSystem->setMass(lucy, 10);
 
-    light = ecsCoordinator.CreateEntity();
-    ecsCoordinator.AddComponent<LightComponent>(light, LightComponent {
-        .position = glm::vec3(0, 25, 0),
-        .color = glm::vec3(80),
-    });
+    //light = ecsCoordinator.CreateEntity();
+    //ecsCoordinator.AddComponent<LightComponent>(light, LightComponent {
+    //    .position = glm::vec4(0, 25, 0, 0),
+    //    .color = glm::vec4(glm::vec3(80), 0),
+    //});
+
+    for(int i=0; i<10; i++) {
+        auto light2 = ecsCoordinator.CreateEntity();
+        float f = static_cast<float>(i) / 10.0f * 2.0f * 3.1415926f;
+        ecsCoordinator.AddComponent<LightComponent>(light2, LightComponent{
+                .position = glm::vec4(20*sin(f), 5, 20*cos(f), 0),
+                .color = glm::vec4(glm::vec3(abs(20*sin(f)), 20 * cos(f), 8), 0),
+        });
+    }
     //physicsSystem->setAngularVelocity(floor, glm::vec3(0.0f,0, 0.1f));
 }
 

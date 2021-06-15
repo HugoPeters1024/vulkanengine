@@ -1,17 +1,11 @@
 #pragma once
 
-#include "RenderSystem.h"
+#include "core.h"
 #include "Primitives.h"
+#include "Components.h"
 
 namespace rp3 = reactphysics3d;
 
-struct PhysicsComponent {
-    rp3::RigidBody* rigidBody{};
-    glm::mat4* transformResult = nullptr;
-    std::vector<glm::vec3*> positionListeners;
-
-    void linkMat4(glm::mat4* t) { transformResult = t; }
-};
 
 class PhysicsSystem : public System
 {

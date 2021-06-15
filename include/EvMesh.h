@@ -36,5 +36,5 @@ public:
     ~EvMesh();
 
     void bind(VkCommandBuffer commandBuffer);
-    void draw(VkCommandBuffer commandBuffer) const;
+    void draw(VkCommandBuffer commandBuffer, uint32_t instanceCount = 1) const;
 };

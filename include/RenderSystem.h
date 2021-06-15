@@ -11,24 +11,7 @@
 #include "EvComposePass.h"
 #include "EvForwardPass.h"
 #include "EvPostPass.h"
-
-struct TextureSet : NoCopy {
-    std::vector<VkDescriptorSet> descriptorSets;
-};
-
-struct ModelComponent {
-    EvMesh* mesh = nullptr;
-    TextureSet* textureSet = nullptr;
-    glm::vec3 scale{1.0f, 1.0f, 1.0f};
-    glm::vec2 textureScale{1.0f, 1.0f};
-    glm::mat4 transform{1.0f};
-};
-
-struct LightComponent {
-    glm::vec3 position;
-    glm::vec3 color;
-};
-
+#include "Components.h"
 
 class RenderSystem : public System
 {

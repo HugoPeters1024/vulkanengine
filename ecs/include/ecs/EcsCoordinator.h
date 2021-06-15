@@ -60,6 +60,11 @@ public:
     }
 
     template<typename T>
+    T* GetComponentArrayData() {
+        return m_componentManager->GetComponentArrayData<T>();
+    }
+
+    template<typename T>
     bool HasComponent(Entity entity) {
         return m_componentManager->HasComponent<T>(entity);
     }

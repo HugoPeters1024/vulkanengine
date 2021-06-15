@@ -97,58 +97,31 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
     const float quadratic = 0.6f;
     // NOT SYNCED WITH SHADER DYNAMICALLY
     const float constant = 1.0f;
-    m_sphereMesh->bind(commandBuffer);
-    for (const auto& entity : lightSubSystem->m_entities) {
-        auto& lightComp = m_coordinator->GetComponent<LightComponent>(entity);
-        auto transform = glm::translate(glm::mat4(1.0f), lightComp.position);
-        float maxI = std::max(lightComp.color.r, std::max(lightComp.color.g, lightComp.color.b));
-        // Any radiance under the reciprocal of this value maybe be lost.
-        float precision = 255.0f / 5.0f;
-        float radius = (-linear + std::sqrt(linear*linear - 4 * quadratic * (constant - maxI * precision))) / (2 * quadratic);
-        auto scale = glm::scale(glm::mat4(1.0f), glm::vec3(radius));
-        ComposePush push{
-            .mvp = transform * scale,
+    ComposePush push{
             .camera = camera.getVPMatrix(device.window.getAspectRatio()),
             .camPos = glm::vec4(camera.position, 0.0f),
-            .lightPos = glm::vec4(lightComp.position, 0.0f),
-            .lightColor = glm::vec4(lightComp.color, 0.0f),
             .invScreenSizeAttenuation = glm::vec4(1.0f / glm::vec2(device.window.width, device.window.height), linear, quadratic),
-        };
-        vkCmdPushConstants(
-                commandBuffer,
-                composePass->getPipelineLayout(),
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                0,
-                sizeof(push),
-                &push);
-        m_sphereMesh->draw(commandBuffer);
-    }
+    };
+    vkCmdPushConstants(commandBuffer, composePass->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
+    m_sphereMesh->bind(commandBuffer);
+    m_sphereMesh->draw(commandBuffer, lightSubSystem->m_entities.size());
     composePass->endPass(commandBuffer);
     forwardPass->beginPass(commandBuffer, imageIndex);
-    /*
     m_cubeMesh->bind(commandBuffer);
     for (const auto& entity : lightSubSystem->m_entities) {
         auto& lightComp = m_coordinator->GetComponent<LightComponent>(entity);
-        auto transform = glm::translate(glm::mat4(1.0f), lightComp.position);
-        ForwardPush push{
+        auto transform = glm::translate(glm::mat4(1.0f), lightComp.position.xyz());
+        ForwardPush push {
             .camera = camera.getVPMatrix(device.window.getAspectRatio()),
             .mvp = transform,
         };
-        vkCmdPushConstants(
-                commandBuffer,
-                gPass->getPipelineLayout(),
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0,
-                sizeof(push),
-                &push);
+        vkCmdPushConstants(commandBuffer, gPass->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
         m_cubeMesh->draw(commandBuffer);
     }
-     */
     forwardPass->endPass(commandBuffer);
     postPass->beginPass(commandBuffer, imageIndex);
     overlay->Draw(commandBuffer);
     postPass->endPass(commandBuffer);
-
 
     vkCheck(vkEndCommandBuffer(commandBuffer));
 }
@@ -177,6 +150,7 @@ void RenderSystem::Render(const EvCamera &camera) {
     }
 
     swapchain->waitForImageReady(imageIndex);
+    composePass->updateLights(m_coordinator->GetComponentArrayData<LightComponent>(), lightSubSystem->m_entities.size());
 
 
     recordCommandBuffer(imageIndex, camera);
