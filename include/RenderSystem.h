@@ -9,7 +9,6 @@
 #include "EvOverlay.h"
 #include "EvGPass.h"
 #include "EvComposePass.h"
-#include "EvForwardPass.h"
 #include "EvPostPass.h"
 #include "Components.h"
 
@@ -32,7 +31,6 @@ class RenderSystem : public System
 
     std::unique_ptr<EvGPass> gPass;
     std::unique_ptr<EvComposePass> composePass;
-    std::unique_ptr<EvForwardPass> forwardPass;
     std::unique_ptr<EvPostPass> postPass;
     std::unique_ptr<EvOverlay> overlay;
 

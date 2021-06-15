@@ -2,31 +2,47 @@
 
 EvComposePass::EvComposePass(EvDevice &device, uint32_t width, uint32_t height, uint32_t nrImages,
                              const std::vector<VkImageView> &posViews,
-                             const std::vector<VkImageView> &albedoViews)
+                             const std::vector<VkImageView> &albedoViews,
+                             const std::vector<EvFrameBufferAttachment> &depthAttachments)
                              : device(device) {
-    createFramebuffer(width, height, nrImages);
-    device.createHostBuffer(MAX_LIGHTS * sizeof(LightComponent), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &lightDataBuffer, &lightDataBufferMemory);
+    createFramebuffer(width, height, nrImages, depthAttachments);
+
+    // Light pipeline
+    device.createHostBuffer(MAX_LIGHTS * sizeof(LightComponent), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &lightPipeline.lightDataBuffer, &lightPipeline.lightDataBufferMemory);
     createDescriptorSetLayout();
     allocateDescriptorSets(nrImages);
     createDescriptorSets(nrImages, posViews, albedoViews);
-    createPipeline();
+    createLightPipeline();
+
+    // Forward pipeline
+    createForwardDescriptorSetLayout();
+    createForwardPipeline();
 }
 
 EvComposePass::~EvComposePass() {
-    vmaDestroyBuffer(device.vmaAllocator, lightDataBuffer, lightDataBufferMemory);
-    vkDestroySampler(device.vkDevice, normalSampler, nullptr);
-    vkDestroySampler(device.vkDevice, posSampler, nullptr);
-    vkDestroySampler(device.vkDevice, albedoSampler, nullptr);
-    vkDestroyShaderModule(device.vkDevice, vertShader, nullptr);
-    vkDestroyShaderModule(device.vkDevice, fragShader, nullptr);
     framebuffer.destroy(device);
-    vkDestroyDescriptorSetLayout(device.vkDevice, descriptorSetLayout, nullptr);
-    vkDestroyPipeline(device.vkDevice, pipeline, nullptr);
-    vkDestroyPipelineLayout(device.vkDevice, pipelineLayout, nullptr);
+    // light pipeline
+    vmaDestroyBuffer(device.vmaAllocator, lightPipeline.lightDataBuffer, lightPipeline.lightDataBufferMemory);
+    vkDestroySampler(device.vkDevice, lightPipeline.normalSampler, nullptr);
+    vkDestroySampler(device.vkDevice, lightPipeline.posSampler, nullptr);
+    vkDestroySampler(device.vkDevice, lightPipeline.albedoSampler, nullptr);
+    vkDestroyShaderModule(device.vkDevice, lightPipeline.vertShader, nullptr);
+    vkDestroyShaderModule(device.vkDevice, lightPipeline.fragShader, nullptr);
+    vkDestroyDescriptorSetLayout(device.vkDevice, lightPipeline.descriptorSetLayout, nullptr);
+    vkDestroyPipeline(device.vkDevice, lightPipeline.pipeline, nullptr);
+    vkDestroyPipelineLayout(device.vkDevice, lightPipeline.pipelineLayout, nullptr);
+
+    // forward pipeline
+    vkDestroyShaderModule(device.vkDevice, forwardPipeline.vertShader, nullptr);
+    vkDestroyShaderModule(device.vkDevice, forwardPipeline.fragShader, nullptr);
+    vkDestroyDescriptorSetLayout(device.vkDevice, forwardPipeline.descriptorSetLayout, nullptr);
+    vkDestroyPipeline(device.vkDevice, forwardPipeline.pipeline, nullptr);
+    vkDestroyPipelineLayout(device.vkDevice, forwardPipeline.pipelineLayout, nullptr);
 }
 
-void EvComposePass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages) {
+void EvComposePass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages, const std::vector<EvFrameBufferAttachment> &depthAttachments) {
     assert(nrImages > 0);
+    assert(depthAttachments.size() == nrImages);
     framebuffer.width = width;
     framebuffer.height = height;
 
@@ -36,38 +52,49 @@ void EvComposePass::createFramebuffer(uint32_t width, uint32_t height, uint32_t 
         device.createAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.composeds[i]);
     };
 
-    VkAttachmentDescription composedDescription {
-        .format = framebuffer.composeds[0].format,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    VkAttachmentDescription defaultDescription {
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
     };
+
+    VkAttachmentDescription composedDescription = defaultDescription;
+    composedDescription.format = framebuffer.composeds[0].format;
+    composedDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    composedDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference composedReference {
         .attachment = 0,
         .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     };
 
-    std::array<VkAttachmentDescription, 1> attachmentDescriptions {composedDescription };
-    std::array<VkAttachmentReference, 1> colorReferences { composedReference };
+    VkAttachmentDescription depthDescription = defaultDescription;
+    depthDescription.format = depthAttachments[0].format;
+    depthDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    depthDescription.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference  depthAttachmentRef {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
 
     VkSubpassDescription subpass {
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = static_cast<uint32_t>(colorReferences.size()),
-        .pColorAttachments = colorReferences.data(),
-        .pDepthStencilAttachment = nullptr,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &composedReference,
+        .pDepthStencilAttachment = &depthAttachmentRef,
     };
 
     std::array<VkSubpassDependency, 2> dependencies {
         VkSubpassDependency {
             .srcSubpass = VK_SUBPASS_EXTERNAL,
             .dstSubpass = 0,
-            .srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
             .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
         },
@@ -82,6 +109,7 @@ void EvComposePass::createFramebuffer(uint32_t width, uint32_t height, uint32_t 
         }
     };
 
+    std::array<VkAttachmentDescription,2> attachmentDescriptions {composedDescription, depthDescription };
     VkRenderPassCreateInfo renderPassInfo {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size()),
@@ -97,8 +125,9 @@ void EvComposePass::createFramebuffer(uint32_t width, uint32_t height, uint32_t 
     framebuffer.vkFrameBuffers.resize(nrImages);
 
     for(int i=0; i<nrImages; i++) {
-        std::array<VkImageView, 1> attachments{
+        std::array<VkImageView, 2> attachments{
                 framebuffer.composeds[i].view,
+                depthAttachments[i].view,
         };
 
         VkFramebufferCreateInfo framebufferInfo{
@@ -148,12 +177,12 @@ void EvComposePass::createDescriptorSetLayout() {
             .pBindings = bindings.data()
     };
 
-    vkCheck(vkCreateDescriptorSetLayout(device.vkDevice, &layoutInfo, nullptr, &descriptorSetLayout));
+    vkCheck(vkCreateDescriptorSetLayout(device.vkDevice, &layoutInfo, nullptr, &lightPipeline.descriptorSetLayout));
 }
 
 void EvComposePass::allocateDescriptorSets(uint32_t nrImages) {
-    descriptorSets.resize(nrImages);
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, descriptorSetLayout);
+    lightPipeline.descriptorSets.resize(nrImages);
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, lightPipeline.descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = device.vkDescriptorPool,
@@ -161,15 +190,15 @@ void EvComposePass::allocateDescriptorSets(uint32_t nrImages) {
             .pSetLayouts = descriptorSetLayouts.data(),
     };
 
-    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, descriptorSets.data()));
+    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, lightPipeline.descriptorSets.data()));
 
     VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo(0.0f);
     samplerInfo.magFilter = VK_FILTER_NEAREST;
     samplerInfo.minFilter = VK_FILTER_NEAREST;
     samplerInfo.anisotropyEnable = false;
-    vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &normalSampler));
-    vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &posSampler));
-    vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &albedoSampler));
+    vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &lightPipeline.normalSampler));
+    vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &lightPipeline.posSampler));
+    vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &lightPipeline.albedoSampler));
 }
 
 void EvComposePass::createDescriptorSets(
@@ -182,19 +211,19 @@ void EvComposePass::createDescriptorSets(
 
     for(int i=0; i<nrImages; i++) {
         VkDescriptorImageInfo posDescriptorInfo{
-                .sampler = posSampler,
+                .sampler = lightPipeline.posSampler,
                 .imageView = posViews[i],
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
 
         VkDescriptorImageInfo albedoDescriptorInfo{
-                .sampler = albedoSampler,
+                .sampler = lightPipeline.albedoSampler,
                 .imageView = albedoViews[i],
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
 
         VkDescriptorBufferInfo lightDataDescriptorInfo {
-            .buffer = lightDataBuffer,
+            .buffer = lightPipeline.lightDataBuffer,
             .offset = 0,
             .range = MAX_LIGHTS * sizeof(LightComponent),
         };
@@ -206,7 +235,7 @@ void EvComposePass::createDescriptorSets(
 
         VkWriteDescriptorSet writeDescriptorImages{
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = descriptorSets[i],
+                .dstSet = lightPipeline.descriptorSets[i],
                 .dstBinding = 0,
                 .dstArrayElement = 0,
                 .descriptorCount = static_cast<uint32_t>(descriptors.size()),
@@ -216,7 +245,7 @@ void EvComposePass::createDescriptorSets(
 
         VkWriteDescriptorSet writeDescriptorBuffers{
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = descriptorSets[i],
+                .dstSet = lightPipeline.descriptorSets[i],
                 .dstBinding = 2,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
@@ -230,7 +259,8 @@ void EvComposePass::createDescriptorSets(
     }
 }
 
-void EvComposePass::createPipeline() {
+
+void EvComposePass::createLightPipeline() {
     VkPushConstantRange pushConstant {
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
@@ -240,15 +270,15 @@ void EvComposePass::createPipeline() {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 1,
-        .pSetLayouts = &descriptorSetLayout,
+        .pSetLayouts = &lightPipeline.descriptorSetLayout,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &pushConstant,
     };
 
-    vkCheck(vkCreatePipelineLayout(device.vkDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout));
+    vkCheck(vkCreatePipelineLayout(device.vkDevice, &pipelineLayoutInfo, nullptr, &lightPipeline.pipelineLayout));
 
-    vertShader = device.createShaderModule("assets/shaders_bin/compose.vert.spv");
-    fragShader = device.createShaderModule("assets/shaders_bin/compose.frag.spv");
+    lightPipeline.vertShader = device.createShaderModule("assets/shaders_bin/compose.vert.spv");
+    lightPipeline.fragShader = device.createShaderModule("assets/shaders_bin/compose.frag.spv");
 
     auto inputAssembly = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
     auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
@@ -262,8 +292,8 @@ void EvComposePass::createPipeline() {
     std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
     auto dynamicState = vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables);
     std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages {
-            vks::initializers::pipelineShaderStageCreateInfo(vertShader, VK_SHADER_STAGE_VERTEX_BIT),
-            vks::initializers::pipelineShaderStageCreateInfo(fragShader, VK_SHADER_STAGE_FRAGMENT_BIT),
+            vks::initializers::pipelineShaderStageCreateInfo(lightPipeline.vertShader, VK_SHADER_STAGE_VERTEX_BIT),
+            vks::initializers::pipelineShaderStageCreateInfo(lightPipeline.fragShader, VK_SHADER_STAGE_FRAGMENT_BIT),
     };
 
     auto bindingDescriptions= Vertex::getBindingDescriptions();
@@ -282,19 +312,88 @@ void EvComposePass::createPipeline() {
         .pDepthStencilState = &depthStencil,
         .pColorBlendState = &colorBlend,
         .pDynamicState = &dynamicState,
-        .layout = pipelineLayout,
+        .layout = lightPipeline.pipelineLayout,
         .renderPass = framebuffer.vkRenderPass,
         .subpass = 0
     };
 
-    vkCheck(vkCreateGraphicsPipelines(device.vkDevice, nullptr, 1, &pipelineInfo, nullptr, &pipeline));
+    vkCheck(vkCreateGraphicsPipelines(device.vkDevice, nullptr, 1, &pipelineInfo, nullptr, &lightPipeline.pipeline));
+}
+
+void EvComposePass::createForwardDescriptorSetLayout() {
+    VkDescriptorSetLayoutCreateInfo layoutInfo {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 0,
+    };
+
+    vkCheck(vkCreateDescriptorSetLayout(device.vkDevice, &layoutInfo, nullptr, &forwardPipeline.descriptorSetLayout));
+}
+
+void EvComposePass::createForwardPipeline() {
+    VkPushConstantRange pushConstantRange{
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = sizeof(ForwardPush),
+    };
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 1,
+            .pSetLayouts = &forwardPipeline.descriptorSetLayout,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges = &pushConstantRange,
+    };
+
+    vkCheck(vkCreatePipelineLayout(device.vkDevice, &pipelineLayoutInfo, nullptr, &forwardPipeline.pipelineLayout));
+
+    forwardPipeline.vertShader = device.createShaderModule("assets/shaders_bin/forward.vert.spv");
+    forwardPipeline.fragShader = device.createShaderModule("assets/shaders_bin/forward.frag.spv");
+
+    auto inputAssembly = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
+    auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+    auto blendAttachmentComposed = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
+    std::array<VkPipelineColorBlendAttachmentState, 1> blendAttachments { blendAttachmentComposed };
+    auto colorBlend = vks::initializers::pipelineColorBlendStateCreateInfo(static_cast<uint32_t>(blendAttachments.size()), blendAttachments.data());
+    auto depthStencil = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
+    auto viewport = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
+    auto multisample = vks::initializers::pipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
+    std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    auto dynamicState = vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables);
+    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages {
+            vks::initializers::pipelineShaderStageCreateInfo(forwardPipeline.vertShader, VK_SHADER_STAGE_VERTEX_BIT),
+            vks::initializers::pipelineShaderStageCreateInfo(forwardPipeline.fragShader, VK_SHADER_STAGE_FRAGMENT_BIT),
+    };
+
+    auto bindingDescriptions= Vertex::getBindingDescriptions();
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    auto vertexInput = vks::initializers::pipelineVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions);
+
+    VkGraphicsPipelineCreateInfo pipelineInfo {
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = static_cast<uint32_t>(shaderStages.size()),
+            .pStages = shaderStages.data(),
+            .pVertexInputState = &vertexInput,
+            .pInputAssemblyState = &inputAssembly,
+            .pViewportState = &viewport,
+            .pRasterizationState = &rasterization,
+            .pMultisampleState = &multisample,
+            .pDepthStencilState = &depthStencil,
+            .pColorBlendState = &colorBlend,
+            .pDynamicState = &dynamicState,
+            .layout = forwardPipeline.pipelineLayout,
+            .renderPass = framebuffer.vkRenderPass,
+            .subpass = 0,
+    };
+
+    vkCheck(vkCreateGraphicsPipelines(device.vkDevice, nullptr, 1, &pipelineInfo, nullptr, &forwardPipeline.pipeline));
 }
 
 void EvComposePass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages,
                                         const std::vector<VkImageView> &posViews,
-                                        const std::vector<VkImageView> &albedoViews) {
+                                        const std::vector<VkImageView> &albedoViews,
+                                        const std::vector<EvFrameBufferAttachment> &depthAttachments) {
     framebuffer.destroy(device);
-    createFramebuffer(width, height, nrImages);
+    createFramebuffer(width, height, nrImages, depthAttachments);
     createDescriptorSets(nrImages, posViews, albedoViews);
 }
 
@@ -302,8 +401,10 @@ void EvComposePass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_
 
 void EvComposePass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera& camera) const {
     assert(imageIdx >= 0 && imageIdx < framebuffer.vkFrameBuffers.size());
-    std::array<VkClearValue, 1> clearValues {
+    std::array<VkClearValue, 2> clearValues {
         VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
+        // should be ignore, load op is not CLEAR
+        VkClearValue { .depthStencil = {0.0f, 1}, },
     };
 
     VkRenderPassBeginInfo renderPassInfo {
@@ -330,25 +431,27 @@ void EvComposePass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx, 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-//    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec3), &camera.position);
-
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[imageIdx], 0, nullptr);
- //   vkCmdDraw(commandBuffer, 3, 1, 0, 0);
-
-  //  vkCmdEndRenderPass(commandBuffer);
 }
 
 void EvComposePass::endPass(VkCommandBuffer commandBuffer) {
     vkCmdEndRenderPass(commandBuffer);
 }
 
+void EvComposePass::bindLightPipeline(VkCommandBuffer commandBuffer, uint32_t imageIdx) const {
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lightPipeline.pipeline);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lightPipeline.pipelineLayout, 0, 1, &lightPipeline.descriptorSets[imageIdx], 0, nullptr);
+}
+
+void EvComposePass::bindForwardPipeline(VkCommandBuffer commandBuffer) const {
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, forwardPipeline.pipeline);
+}
+
 
 void EvComposePass::updateLights(LightComponent *data, uint nrLights) {
     assert(nrLights <= MAX_LIGHTS);
     void* dstData;
-    vkCheck(vmaMapMemory(device.vmaAllocator, lightDataBufferMemory, &dstData));
+    vkCheck(vmaMapMemory(device.vmaAllocator, lightPipeline.lightDataBufferMemory, &dstData));
     memcpy(dstData, data, nrLights * sizeof(LightComponent));
-    vmaUnmapMemory(device.vmaAllocator, lightDataBufferMemory);
+    vmaUnmapMemory(device.vmaAllocator, lightPipeline.lightDataBufferMemory);
 }
 

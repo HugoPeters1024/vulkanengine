@@ -10,10 +10,8 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     gPass = std::make_unique<EvGPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages);
     composePass = std::make_unique<EvComposePass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
                                                   gPass->getPosViews(),
-                                                  gPass->getAlbedoViews());
-    forwardPass = std::make_unique<EvForwardPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
-                                                  gPass->getDepthAttachments(),
-                                                  composePass->getComposedAttachments());
+                                                  gPass->getAlbedoViews(),
+                                                  gPass->getDepthAttachments());
     postPass = std::make_unique<EvPostPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
                                             swapchain->surfaceFormat.format, swapchain->vkImageViews,
                                             composePass->getComposedViews());
@@ -93,32 +91,38 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
 
     recordGBufferCommands(commandBuffer, imageIndex, camera);
     composePass->beginPass(commandBuffer, imageIndex, camera);
-    const float linear = 0.4f;
-    const float quadratic = 0.6f;
-    // NOT SYNCED WITH SHADER DYNAMICALLY
-    const float constant = 1.0f;
-    ComposePush push{
-            .camera = camera.getVPMatrix(device.window.getAspectRatio()),
-            .camPos = glm::vec4(camera.position, 0.0f),
-            .invScreenSizeAttenuation = glm::vec4(1.0f / glm::vec2(device.window.width, device.window.height), linear, quadratic),
-    };
-    vkCmdPushConstants(commandBuffer, composePass->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
-    m_sphereMesh->bind(commandBuffer);
-    m_sphereMesh->draw(commandBuffer, lightSubSystem->m_entities.size());
-    composePass->endPass(commandBuffer);
-    forwardPass->beginPass(commandBuffer, imageIndex);
-    m_cubeMesh->bind(commandBuffer);
-    for (const auto& entity : lightSubSystem->m_entities) {
-        auto& lightComp = m_coordinator->GetComponent<LightComponent>(entity);
-        auto transform = glm::translate(glm::mat4(1.0f), lightComp.position.xyz());
-        ForwardPush push {
-            .camera = camera.getVPMatrix(device.window.getAspectRatio()),
-            .mvp = transform,
+    {
+        composePass->bindLightPipeline(commandBuffer, imageIndex);
+        const float linear = 0.4f;
+        const float quadratic = 0.6f;
+        // NOT SYNCED WITH SHADER DYNAMICALLY
+        const float constant = 1.0f;
+        ComposePush push{
+                .camera = camera.getVPMatrix(device.window.getAspectRatio()),
+                .camPos = glm::vec4(camera.position, 0.0f),
+                .invScreenSizeAttenuation = glm::vec4(1.0f / glm::vec2(device.window.width, device.window.height),
+                                                      linear, quadratic),
         };
-        vkCmdPushConstants(commandBuffer, gPass->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
-        m_cubeMesh->draw(commandBuffer);
+        vkCmdPushConstants(commandBuffer, composePass->getLightPipelineLayout(),
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
+        m_sphereMesh->bind(commandBuffer);
+        m_sphereMesh->draw(commandBuffer, lightSubSystem->m_entities.size());
     }
-    forwardPass->endPass(commandBuffer);
+    {
+        composePass->bindForwardPipeline(commandBuffer);
+        m_cubeMesh->bind(commandBuffer);
+        for (const auto& entity : lightSubSystem->m_entities) {
+            auto& lightComp = m_coordinator->GetComponent<LightComponent>(entity);
+            auto transform = glm::translate(glm::mat4(1.0f), lightComp.position.xyz());
+            ForwardPush push {
+                .camera = camera.getVPMatrix(device.window.getAspectRatio()),
+                .mvp = transform,
+            };
+            vkCmdPushConstants(commandBuffer, gPass->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
+            m_cubeMesh->draw(commandBuffer);
+        }
+    }
+    composePass->endPass(commandBuffer);
     postPass->beginPass(commandBuffer, imageIndex);
     overlay->Draw(commandBuffer);
     postPass->endPass(commandBuffer);
@@ -132,8 +136,7 @@ void RenderSystem::recreateSwapchain() {
     createSwapchain();
     uint32_t nrImages = swapchain->vkImages.size();
     gPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages);
-    composePass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gPass->getPosViews(), gPass->getAlbedoViews());
-    forwardPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gPass->getDepthAttachments(), composePass->getComposedAttachments());
+    composePass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gPass->getPosViews(), gPass->getAlbedoViews(), gPass->getDepthAttachments());
     postPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, composePass->getComposedViews(), swapchain->surfaceFormat.format, swapchain->vkImageViews);
 }
 

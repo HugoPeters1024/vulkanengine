@@ -24,7 +24,7 @@ void main() {
     const float quadratic = push.invScreenSizeAttenuation.w;
     const vec3 lightColor = lightDataOut.lightColor.xyz;
     const float maxI = max(lightColor.x, max(lightColor.y, lightColor.z));
-    float radius = (-linear + sqrt(linear*linear - 4 * quadratic * (1.0f - maxI * prec))) / (2 * quadratic);
+    float radius = (-linear + sqrt(linear*linear - 4.0f * quadratic * (1.0f - maxI * prec))) / (2.0f * quadratic);
 
     mat4 transform = mat4(
         vec4(radius, 0, 0, 0),
