@@ -136,7 +136,7 @@ void EvComposePass::createDescriptorSetLayout() {
         .binding = 2,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
         .pImmutableSamplers = nullptr,
     };
 
@@ -163,7 +163,7 @@ void EvComposePass::allocateDescriptorSets(uint32_t nrImages) {
 
     vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, descriptorSets.data()));
 
-    VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo(device.vkPhysicalDeviceProperties.limits.maxSamplerAnisotropy);
+    VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo(0.0f);
     samplerInfo.magFilter = VK_FILTER_NEAREST;
     samplerInfo.minFilter = VK_FILTER_NEAREST;
     samplerInfo.anisotropyEnable = false;

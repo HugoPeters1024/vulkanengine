@@ -1,15 +1,11 @@
 #version 460
 
 #include "math.glsl"
+#include "structs.glsl"
 
 layout(location = 0) in vec3 vPosition;
 
-layout(location = 1) out flat uint instanceID;
-
-struct LightData {
-    vec4 lightPos;
-    vec4 lightColor;
-};
+layout(location = 1) out LightData lightDataOut;
 
 layout(binding = 2) readonly buffer LightDataBuffer {
     LightData data[];
@@ -22,10 +18,11 @@ layout (push_constant) uniform Push {
 } push;
 
 void main() {
+    lightDataOut = lightData.data[gl_InstanceIndex];
     float prec = 255.0f / 5.0f;
     const float linear = push.invScreenSizeAttenuation.z;
     const float quadratic = push.invScreenSizeAttenuation.w;
-    const vec3 lightColor = lightData.data[gl_InstanceIndex].lightColor.xyz;
+    const vec3 lightColor = lightDataOut.lightColor.xyz;
     const float maxI = max(lightColor.x, max(lightColor.y, lightColor.z));
     float radius = (-linear + sqrt(linear*linear - 4 * quadratic * (1.0f - maxI * prec))) / (2 * quadratic);
 
@@ -33,10 +30,9 @@ void main() {
         vec4(radius, 0, 0, 0),
         vec4(0, radius, 0, 0),
         vec4(0, 0, radius, 0),
-        vec4(lightData.data[gl_InstanceIndex].lightPos.xyz, 1)
+        vec4(lightDataOut.lightPos.xyz, 1)
     );
     vec4 worldPos = transform * vec4(vPosition, 1.0f);
     gl_Position = push.camera * worldPos;
-    instanceID = gl_InstanceIndex;
 }
 

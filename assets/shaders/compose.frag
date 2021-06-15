@@ -1,22 +1,15 @@
 #version 460
 
 #include "math.glsl"
+#include "structs.glsl"
 
-layout(location = 1) in flat uint instanceID;
+layout(location = 1) in LightData lightData;
 
 layout(location = 0) out vec4 outColor;
 
 layout(binding = 0) uniform sampler2D texPos;
 layout(binding = 1) uniform sampler2D texAlbedo;
 
-struct LightData {
-    vec4 lightPos;
-    vec4 lightColor;
-};
-
-layout(binding = 2) readonly buffer LightDataBuffer {
-    LightData data[];
-} lightData;
 
 layout (push_constant) uniform Push {
     mat4 camera;
@@ -36,7 +29,7 @@ void main() {
     vec3 position = positionNormal.xyz;
     vec3 albedo = texture(texAlbedo, uv).xyz;
 
-    vec3 toLight = lightData.data[instanceID].lightPos.xyz - position;
+    vec3 toLight = lightData.lightPos.xyz - position;
     float lightDist = length(toLight);
     const float linear = push.invScreenSizeAttenuation.z;
     const float quadratic = push.invScreenSizeAttenuation.w;
@@ -51,5 +44,5 @@ void main() {
 
 
     vec3 ambient = vec3(0.00f);
-    outColor = vec4(albedo * lightData.data[instanceID].lightColor.xyz * (diffuse + specular) * attenuation + ambient, 1.0f);
+    outColor = vec4(albedo * lightData.lightColor.xyz * (diffuse + specular) * attenuation + ambient, 1.0f);
 }

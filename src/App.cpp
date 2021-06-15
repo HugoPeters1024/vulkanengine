@@ -38,6 +38,13 @@ void App::Run() {
         if (tick % 60 == 0) {
             auto block = addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.5f), glm::vec3(0, 25, 0), glm::vec2(1.0f));
         }
+
+        for(int i=0; i<10; i++) {
+            float f = static_cast<float>(i) / 10.0f * 2.0f * 3.1415926f + time;
+            auto& lightComp = ecsCoordinator.GetComponent<LightComponent>(lights[i]);
+            lightComp.position = glm::vec4(20 * sin(f), 5, 20 * cos(f), 0);
+            lightComp.color = glm::vec4(glm::vec3(abs(20 * sin(f)), 20 * cos(f), 8), 0);
+        }
     }
 
     printf("Flushing GPU before shutdown...\n");
@@ -75,13 +82,10 @@ void App::createWorld() {
     //    .color = glm::vec4(glm::vec3(80), 0),
     //});
 
+    lights.resize(10);
     for(int i=0; i<10; i++) {
-        auto light2 = ecsCoordinator.CreateEntity();
-        float f = static_cast<float>(i) / 10.0f * 2.0f * 3.1415926f;
-        ecsCoordinator.AddComponent<LightComponent>(light2, LightComponent{
-                .position = glm::vec4(20*sin(f), 5, 20*cos(f), 0),
-                .color = glm::vec4(glm::vec3(abs(20*sin(f)), 20 * cos(f), 8), 0),
-        });
+        lights[i] = ecsCoordinator.CreateEntity();
+        ecsCoordinator.AddComponent(lights[i], LightComponent{});
     }
     //physicsSystem->setAngularVelocity(floor, glm::vec3(0.0f,0, 0.1f));
 }
