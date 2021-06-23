@@ -40,7 +40,6 @@ void EvDevice::finalizeInfo() {
 #else
     printf("Release build, validation layers disabled.\n");
 #endif
-
     info.deviceExtensions.insert(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     // dedicated allocations
     info.deviceExtensions.insert("VK_KHR_get_memory_requirements2");
@@ -49,6 +48,8 @@ void EvDevice::finalizeInfo() {
     // Flip the y axis to match OpenGL
     info.deviceExtensions.insert("VK_KHR_maintenance1");
 
+    // Multiplication blending.
+    //info.deviceExtensions.insert("VK_EXT_blend_operation_advanced");
 
     window.collectInstanceExtensions(info.instanceExtensions);
 }
@@ -189,16 +190,26 @@ void EvDevice::createCommandPool() {
 }
 
 void EvDevice::createDescriptorPool() {
-    VkDescriptorPoolSize poolSize {
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 20,
-    };
+    VkDescriptorPoolSize pool_sizes[] =
+            {
+                    { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+                    { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+                    { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+            };
 
     VkDescriptorPoolCreateInfo poolInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
             .maxSets = 20,
-            .poolSizeCount = 1,
-            .pPoolSizes = &poolSize,
+            .poolSizeCount = std::size(pool_sizes),
+            .pPoolSizes = pool_sizes,
     };
 
     vkCheck(vkCreateDescriptorPool(vkDevice, &poolInfo, nullptr, &vkDescriptorPool));
@@ -233,19 +244,52 @@ void EvDevice::createDeviceImage(VkImageCreateInfo imageInfo, VkImage *image, Vm
     vkCheck(vmaCreateImage(vmaAllocator, &imageInfo, &allocInfo, image, memory, nullptr));
 }
 
+void EvDevice::createDeviceCubemap(uint32_t width, uint32_t height, uchar **dataLayers, VkImage* image, VmaAllocation* imageMemory, VkImageView* imageView) {
+    VkDeviceSize layerSize = width * height * 4;
+    VkDeviceSize imageSize = layerSize * 6;
+
+    VkBuffer stagingBuffer;
+    VmaAllocation stagingBufferMemory;
+    createHostBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stagingBuffer, &stagingBufferMemory);
+
+    void* data;
+    vkCheck(vmaMapMemory(vmaAllocator, stagingBufferMemory, &data));
+    for(int i=0; i<6; i++) {
+        memcpy(static_cast<char*>(data) + (layerSize * i), dataLayers[i], layerSize);
+    }
+    vmaUnmapMemory(vmaAllocator, stagingBufferMemory);
+
+    auto imageInfo = vks::initializers::imageCreateInfo(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    imageInfo.arrayLayers = 6;
+    imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    createDeviceImage(imageInfo, image, imageMemory);
+
+    transitionImageLayout(*image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, 6);
+
+    auto copyInfo = vks::initializers::imageCopy(width, height);
+    copyInfo.imageSubresource.layerCount = 6;
+    copyBufferToImage(*image, stagingBuffer, copyInfo);
+    transitionImageLayout(*image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 6);
+
+    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingBufferMemory);
+
+    auto viewInfo = vks::initializers::imageViewCreateInfo(*image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+    viewInfo.subresourceRange.layerCount = 6;
+
+    vkCreateImageView(vkDevice, &viewInfo, nullptr, imageView);
+}
+
 void EvDevice::createAttachment(VkFormat format, VkImageUsageFlagBits usage, VkSampleCountFlagBits samples, uint32_t width, uint32_t height, EvFrameBufferAttachment *attachment) {
     VkImageAspectFlags aspectMask;
-    VkImageLayout imageLayout;
 
     attachment->format = format;
 
     if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
         aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
     else if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
         aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
     else {
         throw std::range_error("Given usage not implemented");
@@ -286,7 +330,7 @@ void EvDevice::createHostBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkB
     };
 
     VmaAllocationCreateInfo allocInfo {
-        .usage = VMA_MEMORY_USAGE_CPU_ONLY,
+        .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
     };
 
     vkCheck(vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, buffer, bufferMemory, nullptr));
@@ -383,27 +427,13 @@ VkFormat EvDevice::findDepthFormat() const {
     );
 }
 
-void EvDevice::copyBufferToImage(VkImage dst, VkBuffer src, uint32_t width, uint32_t height) {
+void EvDevice::copyBufferToImage(VkImage dst, VkBuffer src, VkBufferImageCopy copyInfo) {
     auto cmdBuffer = beginSingleTimeCommands();
-    VkBufferImageCopy region {
-        .bufferOffset = 0,
-        .bufferRowLength = 0,
-        .bufferImageHeight = 0,
-        .imageSubresource = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-        .imageOffset = {0,0,0},
-        .imageExtent = {width, height, 1},
-    };
-
-    vkCmdCopyBufferToImage(cmdBuffer, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(cmdBuffer, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
     endSingleTimeCommands(cmdBuffer);
 }
 
-void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels) {
+void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t arrayLayers) {
     struct TransitionInfo_T {
         VkAccessFlags srcAccessMask;
         VkAccessFlags dstAccessMask;
@@ -452,7 +482,7 @@ void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
             .baseMipLevel = 0,
             .levelCount = mipLevels,
             .baseArrayLayer = 0,
-            .layerCount = 1,
+            .layerCount = arrayLayers,
         },
     };
 

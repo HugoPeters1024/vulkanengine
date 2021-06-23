@@ -21,11 +21,13 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
     framebuffer.height = height;
 
     framebuffer.positions.resize(nrImages);
+    framebuffer.normals.resize(nrImages);
     framebuffer.albedos.resize(nrImages);
     framebuffer.depths.resize(nrImages);
 
     for(int i=0; i<nrImages; i++) {
-        device.createAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.positions[i]);
+        device.createAttachment(VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.positions[i]);
+        device.createAttachment(VK_FORMAT_R32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.normals[i]);
         device.createAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.albedos[i]);
         device.createAttachment(device.findDepthFormat(), VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, framebuffer.width, framebuffer.height, &framebuffer.depths[i]);
     }
@@ -34,13 +36,17 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
     };
 
     VkAttachmentDescription positionDescription = defaultDescription;
     positionDescription.format = framebuffer.positions[0].format;
     positionDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkAttachmentDescription normalDescription = defaultDescription;
+    normalDescription.format = framebuffer.normals[0].format;
+    normalDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentDescription albedoDescription = defaultDescription;
     albedoDescription.format = framebuffer.albedos[0].format;
@@ -50,13 +56,14 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
     depthDescription.format = framebuffer.depths[0].format;
     depthDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    std::array<VkAttachmentDescription, 3> attachmentDescriptions{
+    std::array<VkAttachmentDescription, 4> attachmentDescriptions{
         positionDescription,
+        normalDescription,
         albedoDescription,
         depthDescription,
     };
 
-    std::array<VkAttachmentReference, 2> colorReferences {
+    std::array<VkAttachmentReference, 3> colorReferences {
         VkAttachmentReference {
                 .attachment = 0,
                 .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -64,11 +71,15 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
         VkAttachmentReference {
                 .attachment = 1,
                 .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        },
+        VkAttachmentReference {
+                .attachment = 2,
+                .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         }
     };
 
     VkAttachmentReference depthAttachmentRef {
-        .attachment = 2,
+        .attachment = 3,
         .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
     };
 
@@ -115,8 +126,9 @@ void EvGPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImag
     framebuffer.vkFrameBuffers.resize(nrImages);
 
     for(int i=0; i<nrImages; i++) {
-        std::array<VkImageView, 3> attachments{
+        std::array<VkImageView, 4> attachments{
                 framebuffer.positions[i].view,
+                framebuffer.normals[i].view,
                 framebuffer.albedos[i].view,
                 framebuffer.depths[i].view,
         };
@@ -186,8 +198,9 @@ void EvGPass::createPipeline() {
     auto inputAssembly = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
     auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
     auto blendAttachmentPos = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
+    auto blendAttachmentNormals = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
     auto blendAttachmentAlbedo = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
-    std::array<VkPipelineColorBlendAttachmentState, 2> blendAttachments { blendAttachmentPos, blendAttachmentAlbedo };
+    std::array<VkPipelineColorBlendAttachmentState, 3> blendAttachments { blendAttachmentPos, blendAttachmentNormals, blendAttachmentAlbedo };
     auto colorBlend = vks::initializers::pipelineColorBlendStateCreateInfo(static_cast<uint32_t>(blendAttachments.size()), blendAttachments.data());
     auto depthStencil = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
     auto viewport = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
@@ -229,7 +242,8 @@ void EvGPass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrIm
 }
 
 void EvGPass::startPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) const {
-    std::array<VkClearValue, 3> clearValues {
+    std::array<VkClearValue, 4> clearValues {
+        VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
         VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
         VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
         VkClearValue { .depthStencil = {1.0f, 0}, },

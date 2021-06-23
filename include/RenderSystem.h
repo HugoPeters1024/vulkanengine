@@ -14,9 +14,8 @@
 
 class RenderSystem : public System
 {
-    class LightSystem : public System
+    struct LightSystem : public System
     {
-    public:
         inline Signature GetSignature() const override {
             Signature signature;
             signature.set(m_coordinator->GetComponentType<LightComponent>());
@@ -41,8 +40,17 @@ class RenderSystem : public System
     EvMesh* m_cubeMesh;
     EvMesh* m_sphereMesh;
 
+    struct {
+        VkImage image;
+        VmaAllocation imageMemory;
+        VkImageView imageView;
+        VkSampler sampler;
+        std::vector<VkDescriptorSet> descriptorSets;
+    } m_skybox;
+
 
     void createSwapchain();
+    void loadSkybox();
 
     void recordGBufferCommands(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera &camera);
 

@@ -12,7 +12,6 @@ layout(location = 2) out mat3 TBN;
 layout (push_constant) uniform Lol {
     mat4 camera;
     mat4 mvp;
-    vec4 texScale;
 } lol;
 
 void main() {
@@ -21,7 +20,7 @@ void main() {
 
     gl_Position = lol.camera * worldPos;
 
-    uv = vUv * lol.texScale.xy;
+    uv = vUv;
     position = worldPos.xyz;
 
     vec3 N = normalize((lol.mvp * vec4(vNormal, 0.0f)).xyz);

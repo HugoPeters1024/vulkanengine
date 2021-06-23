@@ -6,9 +6,12 @@
 
 struct UIInfo {
     float fps = 0;
-    float gravity;
+    float gravity = 9.81;
     float floorScale = 1.0f;
     float forceField = 0.0f;
+
+    float linear = 1.0f;
+    float quadratic = 1.0f;
 };
 
 class EvOverlay {

@@ -43,7 +43,7 @@ void EvSwapchain::createSwapchain() {
     VkPresentModeKHR presentMode = chooseSwapPresentMode();
     extent = chooseSwapExtent();
 
-    uint imageCount = capabilities.minImageCount; // + 1;
+    uint imageCount = capabilities.minImageCount + 1;
 
     // Check that the specs allow the extra wiggle room
     if (capabilities.maxImageCount > 0) {
@@ -154,22 +154,18 @@ VkExtent2D EvSwapchain::chooseSwapExtent() const {
 }
 
 VkResult EvSwapchain::acquireNextSwapchainImage(uint32_t *imageIndex) {
+    vkWaitForFences(device.vkDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
     return vkAcquireNextImageKHR(device.vkDevice, vkSwapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, imageIndex);
 }
 
-void EvSwapchain::waitForImageReady(uint32_t imageIndex) {
-    vkWaitForFences(device.vkDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+VkResult EvSwapchain::presentCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
     if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device.vkDevice, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
-}
-
-VkResult EvSwapchain::presentCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
     imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
     std::array<VkSemaphore,1> waitSemaphores = { imageAvailableSemaphores[currentFrame] };
     std::array<VkPipelineStageFlags,1> waitStages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    std::array<VkCommandBuffer,1> pCommandBuffers = {commandBuffer};
     std::array<VkSemaphore,1> signalSemaphores = { renderFinishedSemaphores[currentFrame]};
 
     VkSubmitInfo submitInfo {
@@ -177,8 +173,8 @@ VkResult EvSwapchain::presentCommandBuffer(VkCommandBuffer commandBuffer, uint32
             .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
             .pWaitSemaphores = waitSemaphores.data(),
             .pWaitDstStageMask = waitStages.data(),
-            .commandBufferCount = static_cast<uint32_t>(pCommandBuffers.size()),
-            .pCommandBuffers = pCommandBuffers.data(),
+            .commandBufferCount = 1,
+            .pCommandBuffers = &commandBuffer,
             .signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size()),
             .pSignalSemaphores = signalSemaphores.data(),
     };

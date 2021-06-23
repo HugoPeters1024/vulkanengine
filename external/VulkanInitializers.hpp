@@ -45,6 +45,23 @@ namespace vks
 			return commandBufferAllocateInfo;
 		}
 
+		inline VkBufferImageCopy imageCopy(uint32_t width, uint32_t height) {
+            VkBufferImageCopy region {
+                    .bufferOffset = 0,
+                    .bufferRowLength = 0,
+                    .bufferImageHeight = 0,
+                    .imageSubresource = {
+                            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                            .mipLevel = 0,
+                            .baseArrayLayer = 0,
+                            .layerCount = 1,
+                    },
+                    .imageOffset = {0,0,0},
+                    .imageExtent = {width, height, 1},
+            };
+            return region;
+		}
+
 		inline VkCommandPoolCreateInfo commandPoolCreateInfo()
 		{
 			VkCommandPoolCreateInfo cmdPoolCreateInfo {};

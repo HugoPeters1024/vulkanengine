@@ -1,7 +1,9 @@
 #pragma once
 
-// Type aliases
+// Type aliases and defines
 typedef unsigned char uchar;
+
+inline constexpr float PI = 3.14159265358979323846f;
 
 // STL
 #include <set>

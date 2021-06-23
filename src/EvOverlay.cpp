@@ -79,6 +79,9 @@ void EvOverlay::NewFrame() {
         ImGui::SliderFloat("gravity", &uiInfo.gravity, -10.0f, 10.0f);
         ImGui::SliderFloat("texScale", &uiInfo.floorScale, 0.01f, 10.0f);
         ImGui::SliderFloat("forceField", &uiInfo.forceField, 0, 10);
+        ImGui::TextUnformatted("");
+        ImGui::SliderFloat("linear", &uiInfo.linear, 0.1f, 10.0f);
+        ImGui::SliderFloat("quadratic", &uiInfo.quadratic, 0.1f, 10.0f);
     }
     ImGui::End();
 

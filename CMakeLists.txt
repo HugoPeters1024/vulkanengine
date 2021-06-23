@@ -29,6 +29,9 @@ shader("compose.frag")
 shader("forward.vert")
 shader("forward.frag")
 
+shader("skybox.vert")
+shader("skybox.frag")
+
 shader("post.frag")
 
 add_executable(vulkanray main.cpp ${src})

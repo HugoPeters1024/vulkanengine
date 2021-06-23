@@ -76,6 +76,7 @@ public:
     VkFormat findDepthFormat() const;
 
     void createDeviceImage(VkImageCreateInfo imageInfo, VkImage *image, VmaAllocation *memory);
+    void createDeviceCubemap(uint32_t width, uint32_t height, uchar **dataLayers, VkImage* image, VmaAllocation* imageMemory, VkImageView* imageView);
     void createAttachment(VkFormat format, VkImageUsageFlagBits usage, VkSampleCountFlagBits samples, uint32_t width, uint32_t height, EvFrameBufferAttachment* attachment);
     SwapchainSupportDetails getSwapchainSupportDetails() const;
     VkShaderModule createShaderModule(const char* filepath) const;
@@ -84,6 +85,6 @@ public:
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
     void copyBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize size);
-    void copyBufferToImage(VkImage dst, VkBuffer src, uint32_t width, uint32_t height);
-    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
+    void copyBufferToImage(VkImage dst, VkBuffer src, VkBufferImageCopy copyInfo);
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t arrayLayers);
 };

@@ -3,7 +3,7 @@
 EvTexture::EvTexture(EvDevice &device, unsigned char *pixels, int width, int height, VkFormat format)
     : device(device) {
     mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
-    createImage(pixels, width, height);
+    createImage(pixels, width, height, format);
     createSampler();
 }
 
@@ -43,7 +43,7 @@ void EvTexture::loadFile(const std::string &filename, unsigned char **pixels, in
     }
 }
 
-void EvTexture::createImage(unsigned char* pixels, int width, int height) {
+void EvTexture::createImage(unsigned char* pixels, int width, int height, VkFormat format) {
     VkDeviceSize imageSize = width * height * 4 * sizeof(stbi_uc);
     VkBuffer stagingBuffer;
     VmaAllocation stagingBufferMemory;
@@ -54,14 +54,14 @@ void EvTexture::createImage(unsigned char* pixels, int width, int height) {
     memcpy(data, pixels, static_cast<size_t>(imageSize));
     vmaUnmapMemory(device.vmaAllocator, stagingBufferMemory);
 
-    auto format = VK_FORMAT_R8G8B8A8_UNORM;
     auto imageInfo = vks::initializers::imageCreateInfo(width, height, format,
                                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     imageInfo.mipLevels = mipLevels;
     device.createDeviceImage(imageInfo, &vkImage, &vkImageMemory);
 
-    device.transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
-    device.copyBufferToImage(vkImage, stagingBuffer, width, height);
+    device.transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, 1);
+    auto copyInfo = vks::initializers::imageCopy(width, height);
+    device.copyBufferToImage(vkImage, stagingBuffer, copyInfo);
     // also transitions the layout to shader read optimal.
     generateMipmaps(width, height, format);
 
@@ -171,7 +171,7 @@ void EvTexture::createSampler() {
         .mipLodBias = 0.0f,
         .anisotropyEnable = VK_TRUE,
         .maxAnisotropy = device.vkPhysicalDeviceProperties.limits.maxSamplerAnisotropy,
-        .minLod = 5.0f,
+        .minLod = 0.0f,
         .maxLod = static_cast<float>(mipLevels),
         .unnormalizedCoordinates = VK_FALSE,
     };
