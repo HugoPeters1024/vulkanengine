@@ -1,18 +1,17 @@
-#include "EvPostPass.h"
+#include "RenderPasses/PostPass.h"
 
-EvPostPass::EvPostPass(EvDevice &device, uint32_t width, uint32_t height, uint32_t nrImages,
-                       VkFormat swapchainFormat,
+PostPass::PostPass(EvDevice &device, uint32_t width, uint32_t height, uint32_t nrImages, VkFormat swapchainFormat,
                        const std::vector<VkImageView> &swapchainImageViews,
-                       const std::vector<VkImageView> &composedImageViews)
+                       const std::vector<EvFrameBufferAttachment> &colorInputs)
                        : device(device) {
     createBuffer(width, height, nrImages, swapchainFormat, swapchainImageViews);
     createDescriptorSetLayout();
     allocateDescriptorSets(nrImages);
-    createDescriptorSets(nrImages, composedImageViews);
+    createDescriptorSets(nrImages, colorInputs);
     createPipeline();
 }
 
-EvPostPass::~EvPostPass() {
+PostPass::~PostPass() {
     vkDestroySampler(device.vkDevice, composedSampler, nullptr);
     vkDestroyShaderModule(device.vkDevice, vertShader, nullptr);
     vkDestroyShaderModule(device.vkDevice, fragShader, nullptr);
@@ -22,7 +21,8 @@ EvPostPass::~EvPostPass() {
     vkDestroyPipelineLayout(device.vkDevice, pipelineLayout, nullptr);
 }
 
-void EvPostPass::createBuffer(uint32_t width, uint32_t height, uint32_t nrImages, VkFormat swapchainFormat,
+
+void PostPass::createBuffer(uint32_t width, uint32_t height, uint32_t nrImages, VkFormat swapchainFormat,
                               const std::vector<VkImageView> &swapchainImageViews) {
     assert(nrImages > 0);
     framebuffer.width = width;
@@ -92,7 +92,7 @@ void EvPostPass::createBuffer(uint32_t width, uint32_t height, uint32_t nrImages
     }
 }
 
-void EvPostPass::createDescriptorSetLayout() {
+void PostPass::createDescriptorSetLayout() {
     VkDescriptorSetLayoutBinding composedBinding {
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -110,7 +110,7 @@ void EvPostPass::createDescriptorSetLayout() {
     vkCheck(vkCreateDescriptorSetLayout(device.vkDevice, &layoutInfo, nullptr, &descriptorSetLayout));
 }
 
-void EvPostPass::allocateDescriptorSets(uint32_t nrImages) {
+void PostPass::allocateDescriptorSets(uint32_t nrImages) {
     descriptorSets.resize(nrImages);
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo {
@@ -129,13 +129,13 @@ void EvPostPass::allocateDescriptorSets(uint32_t nrImages) {
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &composedSampler));
 }
 
-void EvPostPass::createDescriptorSets(uint32_t nrImages, const std::vector<VkImageView> &composedViews) {
-    assert(composedViews.size() == nrImages);
+void PostPass::createDescriptorSets(uint32_t nrImages, const std::vector<EvFrameBufferAttachment> &colorInputs) {
+    assert(colorInputs.size() == nrImages);
 
     for(int i=0; i<nrImages; i++) {
         VkDescriptorImageInfo composedDescriptorInfo{
                 .sampler = composedSampler,
-                .imageView = composedViews[i],
+                .imageView = colorInputs[i].view,
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
 
@@ -153,7 +153,7 @@ void EvPostPass::createDescriptorSets(uint32_t nrImages, const std::vector<VkIma
     }
 }
 
-void EvPostPass::createPipeline() {
+void PostPass::createPipeline() {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 1,
@@ -202,15 +202,15 @@ void EvPostPass::createPipeline() {
     vkCheck(vkCreateGraphicsPipelines(device.vkDevice, nullptr, 1, &pipelineInfo, nullptr, &pipeline));
 }
 
-void EvPostPass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages,
-                                     const std::vector<VkImageView> &composedViews, VkFormat swapchainFormat,
+void PostPass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages,
+                                     const std::vector<EvFrameBufferAttachment> &colorInputs, VkFormat swapchainFormat,
                                      const std::vector<VkImageView> &swapchainImageViews) {
     framebuffer.destroy(device);
     createBuffer(width, height, nrImages, swapchainFormat, swapchainImageViews);
-    createDescriptorSets(nrImages, composedViews);
+    createDescriptorSets(nrImages, colorInputs);
 }
 
-void EvPostPass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) const {
+void PostPass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) const {
     assert(imageIdx >= 0 && imageIdx < framebuffer.vkFrameBuffers.size());
     std::array<VkClearValue, 1> clearValues {
             VkClearValue { .color = {0.0f, 0.1f, 0.1f, 1.0f}, },
@@ -246,6 +246,6 @@ void EvPostPass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) con
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 }
 
-void EvPostPass::endPass(VkCommandBuffer commandBuffer) const {
+void PostPass::endPass(VkCommandBuffer commandBuffer) const {
     vkCmdEndRenderPass(commandBuffer);
 }

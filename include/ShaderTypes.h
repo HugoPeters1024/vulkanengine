@@ -10,6 +10,7 @@ struct PushConstant
 {
     mat4 camera;
     mat4 mvp;
+    vec3 camPos;
 };
 
 #endif

@@ -7,10 +7,10 @@
 #include "ShaderTypes.h"
 #include "EvTexture.h"
 #include "EvOverlay.h"
-#include "EvGPass.h"
-#include "EvComposePass.h"
-#include "EvPostPass.h"
 #include "Components.h"
+#include "RenderPasses/DepthPass.h"
+#include "RenderPasses/ForwardPass.h"
+#include "RenderPasses/PostPass.h"
 
 class RenderSystem : public System
 {
@@ -28,10 +28,10 @@ class RenderSystem : public System
     std::unique_ptr<EvSwapchain> swapchain;
     std::vector<VkCommandBuffer> commandBuffers;
 
-    std::unique_ptr<EvGPass> gPass;
-    std::unique_ptr<EvComposePass> composePass;
-    std::unique_ptr<EvPostPass> postPass;
     std::unique_ptr<EvOverlay> overlay;
+    std::unique_ptr<DepthPass> depthPass;
+    std::unique_ptr<ForwardPass> forwardPass;
+    std::unique_ptr<PostPass> postPass;
 
     std::vector<std::unique_ptr<EvMesh>> createdMeshes;
     std::vector<std::unique_ptr<EvTexture>> createdTextures;
@@ -51,8 +51,6 @@ class RenderSystem : public System
 
     void createSwapchain();
     void loadSkybox();
-
-    void recordGBufferCommands(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera &camera);
 
     void allocateCommandBuffers();
     void recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera);

@@ -35,7 +35,7 @@ void App::Run() {
         auto& floorModel = ecsCoordinator.GetComponent<ModelComponent>(floor);
         floorModel.textureScale = glm::vec2(uiinfo.floorScale);
 
-        if (tick % 20 == 0) {
+        if (tick % 100 == 0) {
             auto block = addInstance(cubeMesh, rp3::BodyType::DYNAMIC, glm::vec3(0.5f), glm::vec3(0, 25, 0), glm::vec2(1.0f));
         }
 
@@ -110,7 +110,7 @@ Entity App::addInstance(EvMesh *mesh, rp3::BodyType bodyType, glm::vec3 scale, g
     physicsSystem->linkModelComponent(entity);
 
     auto& light = ecsCoordinator.AddComponent<LightComponent>(entity, LightComponent {
-        .color = glm::vec4(3, 3, 5, 0) * 10.0f,
+        .color = glm::vec4(randf(), randf(), randf(), 0) * 10.0f,
     });
 
     physicsSystem->addPositionListener(entity, (glm::vec3*)&light.position);

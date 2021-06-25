@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core.h"
 
 struct BoundingBox {
     glm::vec3 vmin, vmax;

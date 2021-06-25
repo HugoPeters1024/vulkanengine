@@ -1,9 +1,9 @@
 #pragma once
 
-#include "core.h"
-#include "EvDevice.h"
+#include "../core.h"
+#include "../EvDevice.h"
 
-class EvPostPass {
+class PostPass {
     EvDevice& device;
 
     struct PostBuffer : public EvFrameBuffer {
@@ -23,19 +23,19 @@ class EvPostPass {
                       const std::vector<VkImageView> &swapchainImageViews);
     void createDescriptorSetLayout();
     void allocateDescriptorSets(uint32_t nrImages);
-    void createDescriptorSets(uint32_t nrImages, const std::vector<VkImageView> &composedViews);
+    void createDescriptorSets(uint32_t nrImages, const std::vector<EvFrameBufferAttachment>& colorInputs);
     void createPipeline();
 
 public:
-    EvPostPass(EvDevice &device, uint32_t width, uint32_t height, uint32_t nrImages,
+    PostPass(EvDevice &device, uint32_t width, uint32_t height, uint32_t nrImages,
                VkFormat swapchainFormat, const std::vector<VkImageView> &swapchainImageViews,
-               const std::vector<VkImageView> &composedImageViews);
-    ~EvPostPass();
+               const std::vector<EvFrameBufferAttachment>& colorInputs);
+    ~PostPass();
 
     inline VkRenderPass getRenderPass() const { return framebuffer.vkRenderPass; }
 
     void recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages,
-                             const std::vector<VkImageView> &composedViews, VkFormat swapchainFormat,
+                             const std::vector<EvFrameBufferAttachment>& colorInputs, VkFormat swapchainFormat,
                              const std::vector<VkImageView> &swapchainImageViews);
     void beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) const;
     void endPass(VkCommandBuffer commandBuffer) const;

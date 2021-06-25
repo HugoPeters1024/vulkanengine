@@ -1,5 +1,3 @@
-#include <EvComposePass.h>
-#include <RenderSystem.h>
 #include "RenderSystem.h"
 
 RenderSystem::RenderSystem(EvDevice &device) : device(device) {
@@ -8,16 +6,14 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
 
     allocateCommandBuffers();
 
+    uint32_t width = swapchain->extent.width;
+    uint32_t height = swapchain->extent.height;
     uint32_t nrImages = swapchain->vkImages.size();
-    gPass = std::make_unique<EvGPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages);
-    composePass = std::make_unique<EvComposePass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
-                                                  gPass->getPosViews(),
-                                                  gPass->getNormalViews(),
-                                                  gPass->getAlbedoViews(),
-                                                  gPass->getDepthAttachments());
-    postPass = std::make_unique<EvPostPass>(device, swapchain->extent.width, swapchain->extent.height, nrImages,
+    depthPass = std::make_unique<DepthPass>(device, width, height, nrImages);
+    forwardPass = std::make_unique<ForwardPass>(device, width, height, nrImages, depthPass->getFramebuffer().depths);
+    postPass = std::make_unique<PostPass>(device, width, height, nrImages,
                                             swapchain->surfaceFormat.format, swapchain->vkImageViews,
-                                            composePass->getComposedViews());
+                                            forwardPass->getFramebuffer().colors);
     overlay = std::make_unique<EvOverlay>(device, postPass->getRenderPass(), nrImages);
 
     m_whiteTexture = createTextureFromIntColor(0xffffff);
@@ -60,66 +56,38 @@ void RenderSystem::loadSkybox() {
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &m_skybox.sampler));
 
     // Allocate the descriptor sets
-    uint32_t nrImages = swapchain->vkImages.size();
-    m_skybox.descriptorSets.resize(nrImages);
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, composePass->skyPipeline.descriptorSetLayout);
-    VkDescriptorSetAllocateInfo allocInfo {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = device.vkDescriptorPool,
-            .descriptorSetCount = nrImages,
-            .pSetLayouts = descriptorSetLayouts.data(),
-    };
+    //uint32_t nrImages = swapchain->vkImages.size();
+    //m_skybox.descriptorSets.resize(nrImages);
+    //std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, composePass->skyPipeline.descriptorSetLayout);
+    //VkDescriptorSetAllocateInfo allocInfo {
+    //        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+    //        .descriptorPool = device.vkDescriptorPool,
+    //        .descriptorSetCount = nrImages,
+    //        .pSetLayouts = descriptorSetLayouts.data(),
+    //};
 
-    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, m_skybox.descriptorSets.data()));
+    //vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, m_skybox.descriptorSets.data()));
 
-    // Write the descriptor sets
-    for(int i=0; i<nrImages; i++) {
-        VkDescriptorImageInfo skyboxDescriptorInfo {
-                .sampler = m_skybox.sampler,
-                .imageView = m_skybox.imageView,
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
+    //// Write the descriptor sets
+    //for(int i=0; i<nrImages; i++) {
+    //    VkDescriptorImageInfo skyboxDescriptorInfo {
+    //            .sampler = m_skybox.sampler,
+    //            .imageView = m_skybox.imageView,
+    //            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    //    };
 
-        VkWriteDescriptorSet writeDescriptorImage{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_skybox.descriptorSets[i],
-                .dstBinding = 0,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &skyboxDescriptorInfo
-        };
+    //    VkWriteDescriptorSet writeDescriptorImage{
+    //            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+    //            .dstSet = m_skybox.descriptorSets[i],
+    //            .dstBinding = 0,
+    //            .dstArrayElement = 0,
+    //            .descriptorCount = 1,
+    //            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+    //            .pImageInfo = &skyboxDescriptorInfo
+    //    };
 
-        vkUpdateDescriptorSets(device.vkDevice, 1, &writeDescriptorImage, 0, nullptr);
-    }
-}
-
-void RenderSystem::recordGBufferCommands(VkCommandBuffer commandBuffer, uint32_t imageIdx, const EvCamera &camera) {
-    gPass->startPass(commandBuffer, imageIdx);
-
-    PushConstant push{
-        .camera = camera.getVPMatrix(device.window.getAspectRatio()),
-    };
-
-    for (const auto& entity : m_entities) {
-        auto& modelComp = m_coordinator->GetComponent<ModelComponent>(entity);
-        assert(modelComp.mesh);
-        auto scaleMatrix = glm::scale(glm::mat4(1.0f), modelComp.scale);
-        push.mvp = modelComp.transform * scaleMatrix;
-        vkCmdPushConstants(
-                commandBuffer,
-                gPass->getPipelineLayout(),
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0,
-                sizeof(push),
-                &push);
-        auto textureSet = modelComp.textureSet ? modelComp.textureSet : defaultTextureSet;
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gPass->getPipelineLayout(), 0, 1, &textureSet->descriptorSets[imageIdx], 0, nullptr);
-        modelComp.mesh->bind(commandBuffer);
-        modelComp.mesh->draw(commandBuffer);
-    }
-
-    gPass->endPass(commandBuffer);
+    //    vkUpdateDescriptorSets(device.vkDevice, 1, &writeDescriptorImage, 0, nullptr);
+    //}
 }
 
 void RenderSystem::allocateCommandBuffers() {
@@ -136,7 +104,7 @@ void RenderSystem::allocateCommandBuffers() {
 }
 
 void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera) {
-    const VkCommandBuffer& commandBuffer = commandBuffers[imageIndex];
+    const VkCommandBuffer &commandBuffer = commandBuffers[imageIndex];
     vkCheck(vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
     VkCommandBufferBeginInfo beginInfo{
@@ -146,53 +114,63 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
 
     vkCheck(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
-    recordGBufferCommands(commandBuffer, imageIndex, camera);
-    composePass->beginPass(commandBuffer, imageIndex, camera);
-    {
-        composePass->bindLightPipeline(commandBuffer, imageIndex);
-        const auto& uiInfo = getUIInfo();
-        const float linear = uiInfo.linear;
-        const float quadratic = uiInfo.quadratic;
-        // NOT SYNCED WITH SHADER DYNAMICALLY
-        const float constant = 1.0f;
-        ComposePush push{
-                .camera = camera.getVPMatrix(device.window.getAspectRatio()),
-                .camPos = glm::vec4(camera.position, 0.0f),
-                .invScreenSizeAttenuation = glm::vec4(1.0f / glm::vec2(device.window.width, device.window.height),
-                                                      linear, quadratic),
-        };
-        vkCmdPushConstants(commandBuffer, composePass->getLightPipelineLayout(),
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
-        m_sphereMesh->bind(commandBuffer);
-        m_sphereMesh->draw(commandBuffer, lightSubSystem->m_entities.size());
-    }
-    {
-        composePass->bindSkyPipeline(commandBuffer);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, composePass->skyPipeline.pipelineLayout, 0, 1, &m_skybox.descriptorSets[imageIndex], 0, nullptr);
-        SkyPush push { .camera = camera.getVPMatrix(device.window.getAspectRatio())};
-        vkCmdPushConstants(commandBuffer, composePass->skyPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SkyPush), &push);
-        m_cubeMesh->bind(commandBuffer);
-        m_cubeMesh->draw(commandBuffer);
-    }
-    {
-        //composePass->bindForwardPipeline(commandBuffer);
-        //m_cubeMesh->bind(commandBuffer);
-        //for (const auto& entity : lightSubSystem->m_entities) {
-        //    auto& lightComp = m_coordinator->GetComponent<LightComponent>(entity);
-        //    auto transform = glm::translate(glm::mat4(1.0f), lightComp.position.xyz());
-        //    ForwardPush push {
-        //        .camera = camera.getVPMatrix(device.window.getAspectRatio()),
-        //        .mvp = transform,
-        //    };
-        //    vkCmdPushConstants(commandBuffer, gPass->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
-        //    //m_cubeMesh->draw(commandBuffer);
-        //}
-    }
-    composePass->endPass(commandBuffer);
-    postPass->beginPass(commandBuffer, imageIndex);
-    //overlay->Draw(commandBuffer);
-    postPass->endPass(commandBuffer);
 
+    {
+        depthPass->startPass(commandBuffer, imageIndex);
+        PushConstant push{
+                .camera = camera.getVPMatrix(device.window.getAspectRatio()),
+        };
+
+        for (const auto &entity : m_entities) {
+            auto &modelComp = m_coordinator->GetComponent<ModelComponent>(entity);
+            assert(modelComp.mesh);
+            auto scaleMatrix = glm::scale(glm::mat4(1.0f), modelComp.scale);
+            push.mvp = modelComp.transform * scaleMatrix;
+            vkCmdPushConstants(
+                    commandBuffer,
+                    depthPass->getPipelineLayout(),
+                    VK_SHADER_STAGE_VERTEX_BIT,
+                    0,
+                    sizeof(push),
+                    &push);
+            auto textureSet = modelComp.textureSet ? modelComp.textureSet : defaultTextureSet;
+            modelComp.mesh->bind(commandBuffer);
+            modelComp.mesh->draw(commandBuffer);
+        }
+        depthPass->endPass(commandBuffer);
+    }
+    {
+        forwardPass->startPass(commandBuffer, imageIndex);
+        PushConstant push{
+                .camera = camera.getVPMatrix(device.window.getAspectRatio()),
+                .camPos = camera.position,
+        };
+
+        for (const auto &entity : m_entities) {
+            auto &modelComp = m_coordinator->GetComponent<ModelComponent>(entity);
+            assert(modelComp.mesh);
+            auto scaleMatrix = glm::scale(glm::mat4(1.0f), modelComp.scale);
+            push.mvp = modelComp.transform * scaleMatrix;
+            vkCmdPushConstants(
+                    commandBuffer,
+                    forwardPass->getPipelineLayout(),
+                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                    0,
+                    sizeof(push),
+                    &push);
+            auto textureSet = modelComp.textureSet ? modelComp.textureSet : defaultTextureSet;
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, forwardPass->getPipelineLayout(), 0, 1,
+                                    &textureSet->descriptorSets[imageIndex], 0, nullptr);
+            modelComp.mesh->bind(commandBuffer);
+            modelComp.mesh->draw(commandBuffer);
+        }
+        forwardPass->endPass(commandBuffer);
+    }
+    {
+        postPass->beginPass(commandBuffer, imageIndex);
+        overlay->Draw(commandBuffer);
+        postPass->endPass(commandBuffer);
+    }
     vkCheck(vkEndCommandBuffer(commandBuffer));
 }
 
@@ -200,15 +178,16 @@ void RenderSystem::recreateSwapchain() {
     vkCheck(vkDeviceWaitIdle(device.vkDevice));
     device.window.waitForEvent();
     createSwapchain();
+    uint32_t width = swapchain->extent.width;
+    uint32_t height = swapchain->extent.height;
     uint32_t nrImages = swapchain->vkImages.size();
-    gPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages);
-    composePass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, gPass->getPosViews(),
-                                     gPass->getNormalViews(), gPass->getAlbedoViews(), gPass->getDepthAttachments());
-    postPass->recreateFramebuffer(swapchain->extent.width, swapchain->extent.height, nrImages, composePass->getComposedViews(), swapchain->surfaceFormat.format, swapchain->vkImageViews);
+    depthPass->recreateFramebuffer(width, height, nrImages);
+    forwardPass->recreateFramebuffer(width, height, nrImages, depthPass->getFramebuffer().depths);
+    postPass->recreateFramebuffer(width, height, nrImages, forwardPass->getFramebuffer().colors, swapchain->surfaceFormat.format, swapchain->vkImageViews);
 }
 
 void RenderSystem::Render(const EvCamera &camera) {
-    //overlay->NewFrame();
+    overlay->NewFrame();
     uint32_t imageIndex;
     VkResult acquireImageResult = swapchain->acquireNextSwapchainImage(&imageIndex);
 
@@ -220,7 +199,9 @@ void RenderSystem::Render(const EvCamera &camera) {
     }
 
     const uint nrLights = lightSubSystem->m_entities.size();
-    composePass->updateLights(m_coordinator->GetComponentArrayData<LightComponent>(), nrLights, imageIndex);
+    const UIInfo& uiInfo = getUIInfo();
+    forwardPass->setLightProperties(imageIndex, 1.0f, uiInfo.linear, uiInfo.quadratic);
+    forwardPass->updateLights(m_coordinator->GetComponentArrayData<LightComponent>(), nrLights, imageIndex);
     recordCommandBuffer(imageIndex, camera);
 
     VkResult presentResult = swapchain->presentCommandBuffer(commandBuffers[imageIndex], imageIndex);
@@ -258,7 +239,7 @@ TextureSet *RenderSystem::createTextureSet(EvTexture *diffuseTexture, EvTexture 
     if (!normalTexture) normalTexture = m_normalTexture;
     tset->descriptorSets.resize(swapchain->vkImages.size());
 
-    std::vector<VkDescriptorSetLayout> layouts(tset->descriptorSets.size(), gPass->getDescriptorSetLayout());
+    std::vector<VkDescriptorSetLayout> layouts(tset->descriptorSets.size(), forwardPass->getDescriptorSetLayout());
     VkDescriptorSetAllocateInfo allocInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = device.vkDescriptorPool,

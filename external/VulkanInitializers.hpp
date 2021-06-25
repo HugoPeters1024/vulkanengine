@@ -428,6 +428,26 @@ namespace vks
 			return vInputAttribDescription;
 		}
 
+		inline VkAttachmentDescription attachmentDescription(VkFormat format, VkImageLayout finalLayout) {
+		    VkAttachmentDescription attachmentDescription{};
+		    attachmentDescription.format = format;
+		    attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+		    attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		    attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		    attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		    attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+		    attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		    attachmentDescription.finalLayout = finalLayout;
+		    return attachmentDescription;
+		}
+
+		inline VkAttachmentReference attachmentReference(uint32_t binding, VkImageLayout layout) {
+		    VkAttachmentReference attachmentReference{};
+		    attachmentReference.attachment = binding;
+            attachmentReference.layout = layout;
+		    return attachmentReference;
+		}
+
 		inline VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo()
 		{
 			VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo {};

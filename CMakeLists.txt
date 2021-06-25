@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 project(vulkanray)
 
 set(CMAKE_CXX_STANDARD 20)
-file(GLOB src CONFIGURE_DEPENDS "include/**.h" "include/**.hpp" "src/**.cpp")
+file(GLOB_RECURSE src CONFIGURE_DEPENDS "include/*.h" "include/*.hpp" "src/*.cpp")
 
 macro(shader)
     add_custom_command(
@@ -15,16 +15,7 @@ macro(shader)
     SET(src ${src} assets/shaders_bin/${ARGV0}.spv)
 endmacro()
 
-shader("shader.vert")
-shader("shader.frag")
-
-shader("gpass.vert")
-shader("gpass.frag")
-
 shader("screenfill.vert")
-
-shader("compose.vert")
-shader("compose.frag")
 
 shader("forward.vert")
 shader("forward.frag")
@@ -33,6 +24,8 @@ shader("skybox.vert")
 shader("skybox.frag")
 
 shader("post.frag")
+
+shader("depth.vert")
 
 add_executable(vulkanray main.cpp ${src})
 set_target_properties(vulkanray PROPERTIES LINKER_LANGUAGE CXX)

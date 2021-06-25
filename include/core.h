@@ -60,4 +60,5 @@ inline constexpr float PI = 3.14159265358979323846f;
 // OTHER UTILS
 #include "utils.hpp"
 #include "UtilsPhysicalDevice.hpp"
+#include "random.hpp"
 
