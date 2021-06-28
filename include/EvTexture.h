@@ -16,6 +16,7 @@ class EvTexture : NoCopy {
 
 public:
     static void loadFile(const std::string &filename, unsigned char** pixels, int* width, int* height);
+    static void loadFilef(const std::string &filename, float** pixels, int* width, int* height);
     EvTexture(EvDevice& device, unsigned char* pixels, int width, int height, VkFormat format);
     static std::unique_ptr<EvTexture> fromFile(EvDevice& device, const std::string& filename, VkFormat format);
     static std::unique_ptr<EvTexture> fromIntColor(EvDevice& device, uint32_t color);

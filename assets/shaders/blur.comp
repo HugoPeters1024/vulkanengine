@@ -27,7 +27,7 @@ void main() {
     if (isHorz() ? loc.x > sx : loc.y > sy) return;
 
     vec4 avg = vec4(0);
-    const int ksHalf = 20;
+    const int ksHalf = 25;
     for(int d = -ksHalf; d<=ksHalf; d++) {
         ivec2 nloc = isHorz() ? ivec2(min(sx, loc.x + d), loc.y) : ivec2(loc.x, min(sy, loc.y + d));
         avg += gaussian(float(d)) * imageLoad(inputImage, nloc);

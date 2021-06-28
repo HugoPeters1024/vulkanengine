@@ -22,6 +22,10 @@ inline constexpr float PI = 3.14159265358979323846f;
 #include <limits>
 #include <optional>
 
+// HALF FLOATS
+#include <half.h>
+using namespace half_float;
+
 // ECS subproject
 #include <ecs/ecs.h>
 

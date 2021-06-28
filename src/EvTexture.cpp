@@ -43,6 +43,19 @@ void EvTexture::loadFile(const std::string &filename, unsigned char **pixels, in
     }
 }
 
+void EvTexture::loadFilef(const std::string &filename, float **pixels, int *width, int *height) {
+    int texChannels;
+    *pixels = static_cast<float*>(stbi_loadf(filename.c_str(), width, height, &texChannels, STBI_rgb_alpha));
+
+    float maxValue = 0;
+    for(int i=0; i<(*width)*(*height)*4; i++) maxValue = std::max(maxValue, (*pixels)[i]);
+    printf("max value: %f\n", maxValue);
+
+    if (!*pixels) {
+        throw std::runtime_error("failed to load texture " + filename);
+    }
+}
+
 void EvTexture::createImage(unsigned char* pixels, int width, int height, VkFormat format) {
     VkDeviceSize imageSize = width * height * 4 * sizeof(stbi_uc);
     VkBuffer stagingBuffer;

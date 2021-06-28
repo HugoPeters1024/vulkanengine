@@ -41,14 +41,14 @@ void RenderSystem::createSwapchain() {
 }
 
 void RenderSystem::loadSkybox() {
-    uchar* data[6];
+    float* data[6];
     int32_t width, height;
-    EvTexture::loadFile("./assets/textures/skybox/right.jpg", &data[0], &width, &height);
-    EvTexture::loadFile("./assets/textures/skybox/left.jpg", &data[1], &width, &height);
-    EvTexture::loadFile("./assets/textures/skybox/top.jpg", &data[2], &width, &height);
-    EvTexture::loadFile("./assets/textures/skybox/bottom.jpg", &data[3], &width, &height);
-    EvTexture::loadFile("./assets/textures/skybox/front.jpg", &data[4], &width, &height);
-    EvTexture::loadFile("./assets/textures/skybox/back.jpg", &data[5], &width, &height);
+    EvTexture::loadFilef("./assets/textures/skybox/px.hdr", &data[0], &width, &height);
+    EvTexture::loadFilef("./assets/textures/skybox/nx.hdr", &data[1], &width, &height);
+    EvTexture::loadFilef("./assets/textures/skybox/py.hdr", &data[2], &width, &height);
+    EvTexture::loadFilef("./assets/textures/skybox/ny.hdr", &data[3], &width, &height);
+    EvTexture::loadFilef("./assets/textures/skybox/pz.hdr", &data[4], &width, &height);
+    EvTexture::loadFilef("./assets/textures/skybox/nz.hdr", &data[5], &width, &height);
 
     device.createDeviceCubemap(width, height, data, &m_skybox.image, &m_skybox.imageMemory, &m_skybox.imageView);
 
@@ -57,38 +57,38 @@ void RenderSystem::loadSkybox() {
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &m_skybox.sampler));
 
     // Allocate the descriptor sets
-    //uint32_t nrImages = swapchain->vkImages.size();
-    //m_skybox.descriptorSets.resize(nrImages);
-    //std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, composePass->skyPipeline.descriptorSetLayout);
-    //VkDescriptorSetAllocateInfo allocInfo {
-    //        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-    //        .descriptorPool = device.vkDescriptorPool,
-    //        .descriptorSetCount = nrImages,
-    //        .pSetLayouts = descriptorSetLayouts.data(),
-    //};
+    uint32_t nrImages = swapchain->vkImages.size();
+    m_skybox.descriptorSets.resize(nrImages);
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, forwardPass->getSkybox().descriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = device.vkDescriptorPool,
+            .descriptorSetCount = nrImages,
+            .pSetLayouts = descriptorSetLayouts.data(),
+    };
 
-    //vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, m_skybox.descriptorSets.data()));
+    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, m_skybox.descriptorSets.data()));
 
-    //// Write the descriptor sets
-    //for(int i=0; i<nrImages; i++) {
-    //    VkDescriptorImageInfo skyboxDescriptorInfo {
-    //            .sampler = m_skybox.sampler,
-    //            .imageView = m_skybox.imageView,
-    //            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    //    };
+    // Write the descriptor sets
+    for(int i=0; i<nrImages; i++) {
+        VkDescriptorImageInfo skyboxDescriptorInfo {
+                .sampler = m_skybox.sampler,
+                .imageView = m_skybox.imageView,
+                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
 
-    //    VkWriteDescriptorSet writeDescriptorImage{
-    //            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-    //            .dstSet = m_skybox.descriptorSets[i],
-    //            .dstBinding = 0,
-    //            .dstArrayElement = 0,
-    //            .descriptorCount = 1,
-    //            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-    //            .pImageInfo = &skyboxDescriptorInfo
-    //    };
+        VkWriteDescriptorSet writeDescriptorImage{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = m_skybox.descriptorSets[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &skyboxDescriptorInfo
+        };
 
-    //    vkUpdateDescriptorSets(device.vkDevice, 1, &writeDescriptorImage, 0, nullptr);
-    //}
+        vkUpdateDescriptorSets(device.vkDevice, 1, &writeDescriptorImage, 0, nullptr);
+    }
 }
 
 void RenderSystem::allocateCommandBuffers() {
@@ -127,14 +127,7 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
             assert(modelComp.mesh);
             auto scaleMatrix = glm::scale(glm::mat4(1.0f), modelComp.scale);
             push.mvp = modelComp.transform * scaleMatrix;
-            vkCmdPushConstants(
-                    commandBuffer,
-                    depthPass->getPipelineLayout(),
-                    VK_SHADER_STAGE_VERTEX_BIT,
-                    0,
-                    sizeof(push),
-                    &push);
-            auto textureSet = modelComp.textureSet ? modelComp.textureSet : defaultTextureSet;
+            vkCmdPushConstants(commandBuffer, depthPass->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
             modelComp.mesh->bind(commandBuffer);
             modelComp.mesh->draw(commandBuffer);
         }
@@ -152,19 +145,17 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
             assert(modelComp.mesh);
             auto scaleMatrix = glm::scale(glm::mat4(1.0f), modelComp.scale);
             push.mvp = modelComp.transform * scaleMatrix;
-            vkCmdPushConstants(
-                    commandBuffer,
-                    forwardPass->getPipelineLayout(),
-                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                    0,
-                    sizeof(push),
-                    &push);
+            vkCmdPushConstants(commandBuffer, forwardPass->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
             auto textureSet = modelComp.textureSet ? modelComp.textureSet : defaultTextureSet;
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, forwardPass->getPipelineLayout(), 0, 1,
-                                    &textureSet->descriptorSets[imageIndex], 0, nullptr);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, forwardPass->getPipelineLayout(), 0, 1, &textureSet->descriptorSets[imageIndex], 0, nullptr);
             modelComp.mesh->bind(commandBuffer);
             modelComp.mesh->draw(commandBuffer);
         }
+
+        forwardPass->bindSkyboxPipeline(commandBuffer, camera);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, forwardPass->getSkybox().pipelineLayout, 0, 1, &m_skybox.descriptorSets[imageIndex], 0, nullptr);
+        m_cubeMesh->bind(commandBuffer);
+        m_cubeMesh->draw(commandBuffer);
         forwardPass->endPass(commandBuffer);
     }
     {

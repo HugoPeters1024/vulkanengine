@@ -69,7 +69,7 @@ public:
     VkFormat findDepthFormat() const;
 
     void createDeviceImage(VkImageCreateInfo imageInfo, VkImage *image, VmaAllocation *memory);
-    void createDeviceCubemap(uint32_t width, uint32_t height, uchar **dataLayers, VkImage* image, VmaAllocation* imageMemory, VkImageView* imageView);
+    void createDeviceCubemap(uint32_t width, uint32_t height, float **dataLayers, VkImage* image, VmaAllocation* imageMemory, VkImageView* imageView);
     void createAttachment(VkFormat format, VkImageUsageFlagBits usage, VkSampleCountFlagBits samples, uint32_t width, uint32_t height, EvFrameBufferAttachment* attachment);
     SwapchainSupportDetails getSwapchainSupportDetails() const;
     VkShaderModule createShaderModule(const char* filepath) const;

@@ -244,8 +244,9 @@ void EvDevice::createDeviceImage(VkImageCreateInfo imageInfo, VkImage *image, Vm
     vkCheck(vmaCreateImage(vmaAllocator, &imageInfo, &allocInfo, image, memory, nullptr));
 }
 
-void EvDevice::createDeviceCubemap(uint32_t width, uint32_t height, uchar **dataLayers, VkImage* image, VmaAllocation* imageMemory, VkImageView* imageView) {
-    VkDeviceSize layerSize = width * height * 4;
+void EvDevice::createDeviceCubemap(uint32_t width, uint32_t height, float **dataLayers, VkImage* image, VmaAllocation* imageMemory, VkImageView* imageView) {
+    size_t layerValues = width * height * 4;
+    VkDeviceSize layerSize = layerValues * sizeof(float);
     VkDeviceSize imageSize = layerSize * 6;
 
     VkBuffer stagingBuffer;
@@ -255,11 +256,12 @@ void EvDevice::createDeviceCubemap(uint32_t width, uint32_t height, uchar **data
     void* data;
     vkCheck(vmaMapMemory(vmaAllocator, stagingBufferMemory, &data));
     for(int i=0; i<6; i++) {
-        memcpy(static_cast<char*>(data) + (layerSize * i), dataLayers[i], layerSize);
+        memcpy(static_cast<float*>(data) + (layerValues * i), dataLayers[i], layerSize);
     }
     vmaUnmapMemory(vmaAllocator, stagingBufferMemory);
 
-    auto imageInfo = vks::initializers::imageCreateInfo(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    auto format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    auto imageInfo = vks::initializers::imageCreateInfo(width, height, format, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     imageInfo.arrayLayers = 6;
     imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     createDeviceImage(imageInfo, image, imageMemory);
@@ -273,7 +275,7 @@ void EvDevice::createDeviceCubemap(uint32_t width, uint32_t height, uchar **data
 
     vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingBufferMemory);
 
-    auto viewInfo = vks::initializers::imageViewCreateInfo(*image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    auto viewInfo = vks::initializers::imageViewCreateInfo(*image, format, VK_IMAGE_ASPECT_COLOR_BIT);
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
     viewInfo.subresourceRange.layerCount = 6;
 
