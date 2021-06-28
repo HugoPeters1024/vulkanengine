@@ -5,10 +5,10 @@
 
 class BloomPass {
     EvDevice& device;
-    const std::vector<EvFrameBufferAttachment> bloomAttachments;
+    std::vector<EvFrameBufferAttachment> bloomAttachments;
 
     struct Buffer {
-        uint32_t width, height;
+        int32_t width, height;
         std::vector<VkImage> tmpImages;
         std::vector<VmaAllocation> tmpImageMemory;
         std::vector<VkImageView> tmpImageViews;

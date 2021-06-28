@@ -107,6 +107,22 @@ namespace vks
 			return imageMemoryBarrier;
 		}
 
+		inline VkImageMemoryBarrier imageMemoryBarrier(VkImage image,  VkImageLayout oldLayout, VkImageLayout newLayout)
+        {
+            auto imageBarrier = vks::initializers::imageMemoryBarrier();
+            imageBarrier.image = image;
+            imageBarrier.oldLayout = oldLayout;
+            imageBarrier.newLayout = newLayout;
+            imageBarrier.subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            };
+            return imageBarrier;
+        }
+
 		/** @brief Initialize a buffer memory barrier with no image transfer ownership */
 		inline VkBufferMemoryBarrier bufferMemoryBarrier()
 		{

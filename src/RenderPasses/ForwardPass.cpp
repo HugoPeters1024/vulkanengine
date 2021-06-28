@@ -42,14 +42,14 @@ void ForwardPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nr
     auto bloom_format = VK_FORMAT_R16G16B16A16_SFLOAT;
     for(int i=0; i<nrImages; i++) {
         device.createAttachment(color_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, width, height, &framebuffer.colors[i]);
-        auto usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+        auto usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         device.createAttachment(bloom_format, usage, VK_SAMPLE_COUNT_1_BIT, width, height, &framebuffer.blooms[i]);
     }
 
     auto colorDescription = vks::initializers::attachmentDescription(color_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto colorReference = vks::initializers::attachmentReference(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    auto bloomDescription = vks::initializers::attachmentDescription(bloom_format, VK_IMAGE_LAYOUT_GENERAL);
+    auto bloomDescription = vks::initializers::attachmentDescription(bloom_format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     auto bloomReference = vks::initializers::attachmentReference(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     std::array<VkAttachmentReference, 2> colorAttachments { colorReference, bloomReference };

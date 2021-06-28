@@ -1,6 +1,7 @@
 #version 460
 
 #include "structs.glsl"
+#include "utils.glsl"
 
 layout(location = 0) in vec3 fragPos;
 layout(location = 1) in vec2 uv;
@@ -50,5 +51,5 @@ void main() {
     }
     const vec3 ambient = vec3(0.01) + 0.01 * max(0.0f, dot(normal, vec3(0, 1, 0)));
     outColor = vec4(albedo * (totalLight + ambient), 1.0f);
-    outBloom = outColor - 1.0f;
+    outBloom = outColor * max(0.0f, percievedBrightness(outColor.xyz) - 1.0f);
 }

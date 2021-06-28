@@ -433,8 +433,7 @@ void EvDevice::copyBufferToImage(VkImage dst, VkBuffer src, VkBufferImageCopy co
     endSingleTimeCommands(cmdBuffer);
 }
 
-void
-EvDevice::transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels,
+void EvDevice::transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels,
                                 uint32_t arrayLayers) {
     struct TransitionInfo_T {
         VkAccessFlags srcAccessMask;
