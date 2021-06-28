@@ -31,7 +31,9 @@ inline constexpr float PI = 3.14159265358979323846f;
 
 // VULKAN & FRIENDS
 #include <vulkan/vulkan.h>
-#include <VulkanInitializers.hpp>
+#include <vk_mem_alloc.hpp>
+#include <vks/VulkanInitializers.hpp>
+#include <vks/VulkanTools.h>
 
 // IMGUI
 #include <imgui/imgui.h>

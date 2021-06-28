@@ -10,6 +10,7 @@
 #include "Components.h"
 #include "RenderPasses/DepthPass.h"
 #include "RenderPasses/ForwardPass.h"
+#include "RenderPasses/BloomPass.h"
 #include "RenderPasses/PostPass.h"
 
 class RenderSystem : public System
@@ -32,6 +33,7 @@ class RenderSystem : public System
     std::unique_ptr<DepthPass> depthPass;
     std::unique_ptr<ForwardPass> forwardPass;
     std::unique_ptr<PostPass> postPass;
+    std::unique_ptr<BloomPass> bloomPass;
 
     std::vector<std::unique_ptr<EvMesh>> createdMeshes;
     std::vector<std::unique_ptr<EvTexture>> createdTextures;

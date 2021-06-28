@@ -12,9 +12,11 @@ class ForwardPass : NoCopy
 
     struct Buffer : public EvFrameBuffer {
         std::vector<EvFrameBufferAttachment> colors;
+        std::vector<EvFrameBufferAttachment> blooms;
 
         virtual void destroy(EvDevice& device) override {
             for(auto& color : colors) color.destroy(device);
+            for(auto& bloom : blooms) bloom.destroy(device);
             EvFrameBuffer::destroy(device);
         }
     } framebuffer;

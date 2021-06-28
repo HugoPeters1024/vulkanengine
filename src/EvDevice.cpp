@@ -207,7 +207,7 @@ void EvDevice::createDescriptorPool() {
 
     VkDescriptorPoolCreateInfo poolInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-            .maxSets = 20,
+            .maxSets = 100,
             .poolSizeCount = std::size(pool_sizes),
             .pPoolSizes = pool_sizes,
     };
@@ -264,12 +264,12 @@ void EvDevice::createDeviceCubemap(uint32_t width, uint32_t height, uchar **data
     imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     createDeviceImage(imageInfo, image, imageMemory);
 
-    transitionImageLayout(*image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, 6);
+    transitionImageLayout(*image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, 6);
 
     auto copyInfo = vks::initializers::imageCopy(width, height);
     copyInfo.imageSubresource.layerCount = 6;
     copyBufferToImage(*image, stagingBuffer, copyInfo);
-    transitionImageLayout(*image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 6);
+    transitionImageLayout(*image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 6);
 
     vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingBufferMemory);
 
@@ -433,7 +433,9 @@ void EvDevice::copyBufferToImage(VkImage dst, VkBuffer src, VkBufferImageCopy co
     endSingleTimeCommands(cmdBuffer);
 }
 
-void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t arrayLayers) {
+void
+EvDevice::transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels,
+                                uint32_t arrayLayers) {
     struct TransitionInfo_T {
         VkAccessFlags srcAccessMask;
         VkAccessFlags dstAccessMask;
@@ -449,6 +451,15 @@ void EvDevice::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
                 .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                 .dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            }
+        },
+        {
+            {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL},
+            TransitionInfo_T {
+                    .srcAccessMask = 0,
+                    .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                    .srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                    .dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             }
         },
         {

@@ -11,9 +11,10 @@ RenderSystem::RenderSystem(EvDevice &device) : device(device) {
     uint32_t nrImages = swapchain->vkImages.size();
     depthPass = std::make_unique<DepthPass>(device, width, height, nrImages);
     forwardPass = std::make_unique<ForwardPass>(device, width, height, nrImages, depthPass->getFramebuffer().depths);
+    bloomPass = std::make_unique<BloomPass>(device, width, height, nrImages, forwardPass->getFramebuffer().blooms);
     postPass = std::make_unique<PostPass>(device, width, height, nrImages,
                                             swapchain->surfaceFormat.format, swapchain->vkImageViews,
-                                            forwardPass->getFramebuffer().colors);
+                                            forwardPass->getFramebuffer().colors, forwardPass->getFramebuffer().blooms);
     overlay = std::make_unique<EvOverlay>(device, postPass->getRenderPass(), nrImages);
 
     m_whiteTexture = createTextureFromIntColor(0xffffff);
@@ -105,7 +106,7 @@ void RenderSystem::allocateCommandBuffers() {
 
 void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &camera) {
     const VkCommandBuffer &commandBuffer = commandBuffers[imageIndex];
-    vkCheck(vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    vkCheck(vkResetCommandBuffer(commandBuffer, 0));
 
     VkCommandBufferBeginInfo beginInfo{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -167,6 +168,9 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
         forwardPass->endPass(commandBuffer);
     }
     {
+        bloomPass->run(commandBuffer, imageIndex);
+    }
+    {
         postPass->beginPass(commandBuffer, imageIndex);
         overlay->Draw(commandBuffer);
         postPass->endPass(commandBuffer);
@@ -183,7 +187,9 @@ void RenderSystem::recreateSwapchain() {
     uint32_t nrImages = swapchain->vkImages.size();
     depthPass->recreateFramebuffer(width, height, nrImages);
     forwardPass->recreateFramebuffer(width, height, nrImages, depthPass->getFramebuffer().depths);
-    postPass->recreateFramebuffer(width, height, nrImages, forwardPass->getFramebuffer().colors, swapchain->surfaceFormat.format, swapchain->vkImageViews);
+    bloomPass->recreateFramebuffer(width, height, nrImages, forwardPass->getFramebuffer().blooms);
+    postPass->recreateFramebuffer(width, height, nrImages, forwardPass->getFramebuffer().colors, forwardPass->getFramebuffer().blooms,
+                                  swapchain->surfaceFormat.format, swapchain->vkImageViews);
 }
 
 void RenderSystem::Render(const EvCamera &camera) {

@@ -36,28 +36,37 @@ void ForwardPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nr
     framebuffer.height = height;
 
     framebuffer.colors.resize(nrImages);
+    framebuffer.blooms.resize(nrImages);
 
-    auto format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    auto color_format = VK_FORMAT_R8G8B8A8_SNORM;
+    auto bloom_format = VK_FORMAT_R16G16B16A16_SFLOAT;
     for(int i=0; i<nrImages; i++) {
-        device.createAttachment(format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, width, height, &framebuffer.colors[i]);
+        device.createAttachment(color_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_SAMPLE_COUNT_1_BIT, width, height, &framebuffer.colors[i]);
+        auto usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+        device.createAttachment(bloom_format, usage, VK_SAMPLE_COUNT_1_BIT, width, height, &framebuffer.blooms[i]);
     }
 
-    auto colorDescription = vks::initializers::attachmentDescription(format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto colorDescription = vks::initializers::attachmentDescription(color_format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto colorReference = vks::initializers::attachmentReference(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    auto bloomDescription = vks::initializers::attachmentDescription(bloom_format, VK_IMAGE_LAYOUT_GENERAL);
+    auto bloomReference = vks::initializers::attachmentReference(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    std::array<VkAttachmentReference, 2> colorAttachments { colorReference, bloomReference };
 
     auto depthDescription = vks::initializers::attachmentDescription(depthAttachments[0].format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     depthDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     depthDescription.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    auto depthReference = vks::initializers::attachmentReference(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    auto depthReference = vks::initializers::attachmentReference(2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     VkSubpassDescription subpassInfo {
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorReference,
+        .colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size()),
+        .pColorAttachments = colorAttachments.data(),
         .pDepthStencilAttachment = &depthReference,
     };
 
-    std::array<VkAttachmentDescription,2> attachmentDescriptions {colorDescription, depthDescription};
+    std::array<VkAttachmentDescription,3> attachmentDescriptions {colorDescription, bloomDescription, depthDescription};
     VkRenderPassCreateInfo renderPassInfo {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size()),
@@ -71,7 +80,7 @@ void ForwardPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nr
 
     framebuffer.vkFrameBuffers.resize(nrImages);
     for(int i=0; i<nrImages; i++) {
-        std::array<VkImageView, 2> attachments { framebuffer.colors[i].view, depthAttachments[i].view };
+        std::array<VkImageView, 3> attachments { framebuffer.colors[i].view, framebuffer.blooms[i].view, depthAttachments[i].view };
 
         VkFramebufferCreateInfo framebufferInfo {
             .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -158,7 +167,9 @@ void ForwardPass::createPipeline() {
     auto inputAssembly = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
     auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
     auto colorBlendInfo = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
-    auto colorBlend = vks::initializers::pipelineColorBlendStateCreateInfo(1, &colorBlendInfo);
+    auto bloomBlendInfo = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
+    std::array<VkPipelineColorBlendAttachmentState, 2> blendings = { colorBlendInfo, bloomBlendInfo};
+    auto colorBlend = vks::initializers::pipelineColorBlendStateCreateInfo(blendings.size(), blendings.data());
     auto depthStencil = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_FALSE, VK_COMPARE_OP_EQUAL);
     auto viewport = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
     auto multisample = vks::initializers::pipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
@@ -248,7 +259,8 @@ void ForwardPass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_t 
 }
 
 void ForwardPass::startPass(VkCommandBuffer cmdBuffer, uint32_t imageIdx) const {
-    std::array<VkClearValue, 2> clearValues {
+    std::array<VkClearValue, 3> clearValues {
+        VkClearValue {.color = {0.0f, 0.0f, 0.0f, 0.0f}},
         VkClearValue {.color = {0.0f, 0.0f, 0.0f, 0.0f}},
         VkClearValue { .depthStencil = {0.0f, 1}},
     };

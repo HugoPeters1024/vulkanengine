@@ -11,7 +11,11 @@ public:
     NoCopy() = default;
 };
 
-#define vkCheck(x)                                                                     \
+#define vkCheck(x) VK_CHECK_RESULT(x)
+
+
+/*
+#define vkCheck(x) \
     do                                                                                  \
     {                                                                                   \
         VkResult err = x;                                                               \
@@ -21,6 +25,7 @@ public:
             abort();                                                                    \
         }                                                                               \
     } while (0)
+    */
 
 
 inline bool checkValidationLayersSupported(const std::vector<const char*>& layers) {

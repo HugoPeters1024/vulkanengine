@@ -25,6 +25,7 @@ layout (push_constant) uniform Lol {
 
 
 layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 outBloom;
 
 void main() {
     vec3 normal = texture(normalTex, uv).xyz * 2.0f - 1.0f;
@@ -49,4 +50,5 @@ void main() {
     }
     const vec3 ambient = vec3(0.01) + 0.01 * max(0.0f, dot(normal, vec3(0, 1, 0)));
     outColor = vec4(albedo * (totalLight + ambient), 1.0f);
+    outBloom = outColor - 1.0f;
 }

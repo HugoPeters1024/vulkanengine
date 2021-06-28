@@ -1,0 +1,35 @@
+#version 460
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+layout(binding = 0, rgba16f) uniform readonly image2D inputImage;
+layout(binding = 1, rgba16f) uniform writeonly image2D resultImage;
+
+layout (push_constant) uniform PushConstant {
+    ivec4 d;
+};
+
+#define PI 3.1415926538
+
+bool isHorz() { return d.x == 0; }
+
+float gaussian(float d) {
+    const float sigma = 5.0f;
+    return inversesqrt(2 * PI * sigma * sigma) * exp(-(d * d)/(2 * sigma * sigma));
+}
+
+void main() {
+    ivec2 loc = ivec2(gl_GlobalInvocationID.xy);
+
+    vec4 avg = vec4(0);
+    const int ksHalf = 10;
+    for(int d = -ksHalf; d<=ksHalf; d++) {
+        ivec2 nloc;
+        if (isHorz())
+            nloc = ivec2(loc.x + d, loc.y);
+        else
+            nloc = ivec2(loc.x, loc.y + d);
+        avg += gaussian(float(d)) * imageLoad(inputImage, nloc);
+    }
+
+    imageStore(resultImage, loc, avg);
+}

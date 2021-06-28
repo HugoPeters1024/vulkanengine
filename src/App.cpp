@@ -29,7 +29,7 @@ void App::Run() {
         renderSystem->Render(camera);
         time += 0.01f;
         double timePerFrame = glfwGetTime() - startFrame;
-        uiinfo.fps = static_cast<float>(1.0 / timePerFrame);
+        uiinfo.fps = static_cast<float>(1.0f / timePerFrame);
 
         physicsSystem->setWorldGravity(renderSystem->getUIInfo().gravity);
         auto& floorModel = ecsCoordinator.GetComponent<ModelComponent>(floor);
@@ -110,7 +110,7 @@ Entity App::addInstance(EvMesh *mesh, rp3::BodyType bodyType, glm::vec3 scale, g
     physicsSystem->linkModelComponent(entity);
 
     auto& light = ecsCoordinator.AddComponent<LightComponent>(entity, LightComponent {
-        .color = glm::vec4(randf(), randf(), randf(), 0) * 10.0f,
+        .color = glm::vec4(randf(), randf(), randf(), 0) * 20.0f,
     });
 
     physicsSystem->addPositionListener(entity, (glm::vec3*)&light.position);

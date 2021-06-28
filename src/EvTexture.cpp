@@ -59,7 +59,8 @@ void EvTexture::createImage(unsigned char* pixels, int width, int height, VkForm
     imageInfo.mipLevels = mipLevels;
     device.createDeviceImage(imageInfo, &vkImage, &vkImageMemory);
 
-    device.transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, 1);
+    device.transitionImageLayout(vkImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels,
+                                 1);
     auto copyInfo = vks::initializers::imageCopy(width, height);
     device.copyBufferToImage(vkImage, stagingBuffer, copyInfo);
     // also transitions the layout to shader read optimal.

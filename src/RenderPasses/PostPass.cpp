@@ -1,13 +1,14 @@
 #include "RenderPasses/PostPass.h"
 
 PostPass::PostPass(EvDevice &device, uint32_t width, uint32_t height, uint32_t nrImages, VkFormat swapchainFormat,
-                       const std::vector<VkImageView> &swapchainImageViews,
-                       const std::vector<EvFrameBufferAttachment> &colorInputs)
+                   const std::vector<VkImageView> &swapchainImageViews,
+                   const std::vector<EvFrameBufferAttachment> &colorInputs,
+                   const std::vector<EvFrameBufferAttachment> &bloomInputs)
                        : device(device) {
     createBuffer(width, height, nrImages, swapchainFormat, swapchainImageViews);
     createDescriptorSetLayout();
     allocateDescriptorSets(nrImages);
-    createDescriptorSets(nrImages, colorInputs);
+    createDescriptorSets(nrImages, colorInputs, bloomInputs);
     createPipeline();
 }
 
@@ -31,7 +32,7 @@ void PostPass::createBuffer(uint32_t width, uint32_t height, uint32_t nrImages, 
     VkAttachmentDescription colorAttachment {
             .format = swapchainFormat,
             .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
             .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
             .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -112,6 +113,7 @@ void PostPass::createDescriptorSetLayout() {
 
 void PostPass::allocateDescriptorSets(uint32_t nrImages) {
     descriptorSets.resize(nrImages);
+    bloomDescriptorSets.resize(nrImages);
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -121,6 +123,7 @@ void PostPass::allocateDescriptorSets(uint32_t nrImages) {
     };
 
     vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, descriptorSets.data()));
+    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, bloomDescriptorSets.data()));
 
     VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo(device.vkPhysicalDeviceProperties.limits.maxSamplerAnisotropy);
     samplerInfo.minFilter = VK_FILTER_NEAREST;
@@ -129,27 +132,23 @@ void PostPass::allocateDescriptorSets(uint32_t nrImages) {
     vkCheck(vkCreateSampler(device.vkDevice, &samplerInfo, nullptr, &composedSampler));
 }
 
-void PostPass::createDescriptorSets(uint32_t nrImages, const std::vector<EvFrameBufferAttachment> &colorInputs) {
+void PostPass::createDescriptorSets(uint32_t nrImages, const std::vector<EvFrameBufferAttachment> &colorInputs, const std::vector<EvFrameBufferAttachment> &bloomInputs) {
     assert(colorInputs.size() == nrImages);
 
     for(int i=0; i<nrImages; i++) {
-        VkDescriptorImageInfo composedDescriptorInfo{
-                .sampler = composedSampler,
-                .imageView = colorInputs[i].view,
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
+        auto composedInfo = vks::initializers::descriptorImageInfo(composedSampler, colorInputs[i].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        auto composedWrite = vks::initializers::writeDescriptorSet(descriptorSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &composedInfo);
 
-        VkWriteDescriptorSet writeDescriptors{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = descriptorSets[i],
-                .dstBinding = 0,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &composedDescriptorInfo,
-        };
+        std::array<VkWriteDescriptorSet, 1> writes { composedWrite };
+        vkUpdateDescriptorSets(device.vkDevice, writes.size(), writes.data(), 0, nullptr);
+    }
 
-        vkUpdateDescriptorSets(device.vkDevice, 1, &writeDescriptors, 0, nullptr);
+    for(int i=0; i<nrImages; i++) {
+        auto bloomInfo = vks::initializers::descriptorImageInfo(composedSampler, bloomInputs[i].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        auto bloomWrite = vks::initializers::writeDescriptorSet(bloomDescriptorSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &bloomInfo);
+
+        std::array<VkWriteDescriptorSet, 1> writes { bloomWrite };
+        vkUpdateDescriptorSets(device.vkDevice, writes.size(), writes.data(), 0, nullptr);
     }
 }
 
@@ -169,7 +168,9 @@ void PostPass::createPipeline() {
 
     auto inputAssembly = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
     auto rasterization = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
-    auto blendAttachment = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
+    auto blendAttachment = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_TRUE);
+    blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
     auto colorBlend = vks::initializers::pipelineColorBlendStateCreateInfo(1, &blendAttachment);
     auto depthStencil = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_FALSE, VK_FALSE, VK_COMPARE_OP_ALWAYS);
     auto viewport = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
@@ -203,17 +204,18 @@ void PostPass::createPipeline() {
 }
 
 void PostPass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages,
-                                     const std::vector<EvFrameBufferAttachment> &colorInputs, VkFormat swapchainFormat,
-                                     const std::vector<VkImageView> &swapchainImageViews) {
+                                   const std::vector<EvFrameBufferAttachment> &colorInputs,
+                                   const std::vector<EvFrameBufferAttachment> &bloomInputs, VkFormat swapchainFormat,
+                                   const std::vector<VkImageView> &swapchainImageViews) {
     framebuffer.destroy(device);
     createBuffer(width, height, nrImages, swapchainFormat, swapchainImageViews);
-    createDescriptorSets(nrImages, colorInputs);
+    createDescriptorSets(nrImages, colorInputs, bloomInputs);
 }
 
 void PostPass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) const {
     assert(imageIdx >= 0 && imageIdx < framebuffer.vkFrameBuffers.size());
     std::array<VkClearValue, 1> clearValues {
-            VkClearValue { .color = {0.0f, 0.1f, 0.1f, 1.0f}, },
+            VkClearValue { .color = {0.0f, 0.0f, 0.0f, 0.0f}, },
     };
 
     VkRenderPassBeginInfo renderPassInfo {
@@ -243,6 +245,9 @@ void PostPass::beginPass(VkCommandBuffer commandBuffer, uint32_t imageIdx) const
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[imageIdx], 0, nullptr);
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &bloomDescriptorSets[imageIdx], 0, nullptr);
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 }
 

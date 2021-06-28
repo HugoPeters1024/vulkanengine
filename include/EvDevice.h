@@ -1,14 +1,7 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
-#include <VulkanInitializers.hpp>
-#include <set>
-#include <unordered_map>
-
-#include "utils.hpp"
-#include "UtilsPhysicalDevice.hpp"
+#include "core.h"
 #include "EvWindow.h"
-#include <vk_mem_alloc.hpp>
 
 class EvDevice;
 
@@ -86,5 +79,6 @@ public:
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
     void copyBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize size);
     void copyBufferToImage(VkImage dst, VkBuffer src, VkBufferImageCopy copyInfo);
-    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t arrayLayers);
+    void transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels,
+                               uint32_t arrayLayers);
 };

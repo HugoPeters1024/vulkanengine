@@ -27,11 +27,18 @@ shader("post.frag")
 
 shader("depth.vert")
 
+shader("blur.comp")
+
 add_executable(vulkanray main.cpp ${src})
 set_target_properties(vulkanray PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/include/)
 target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/external)
 target_precompile_headers(vulkanray PRIVATE include/core.h)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/vks)
+link_directories(${CMAKE_SOURCE_DIR}/external/vks)
+target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/vks/)
+target_link_libraries(vulkanray vks)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/ecs)
 link_directories(${CMAKE_SOURCE_DIR}/ecs)
