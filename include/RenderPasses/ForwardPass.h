@@ -6,6 +6,7 @@
 #include "../ShaderTypes.h"
 #include "../Primitives.h"
 #include "../Components.h"
+#include "../UBOBuffer.h"
 
 class ForwardPass : NoCopy
 {
@@ -38,6 +39,7 @@ class ForwardPass : NoCopy
     VkDescriptorSetLayout lightBufferDescriptorSetLayout;
     VkPipeline pipeline;
     VkPipelineLayout pipelineLayout;
+    std::unique_ptr<UBOBuffer<LightBuffer>> lightUBO;
 
     struct Skybox {
         struct {
@@ -58,11 +60,6 @@ class ForwardPass : NoCopy
         }
     } skybox;
 
-    std::vector<VkBuffer> lightBuffers;
-    std::vector<VmaAllocation> lightBufferMemories;
-    std::vector<LightBuffer*> lightBuffersMapped;
-    std::vector<VkDescriptorSet> lightBufferDescriptorSets;
-
     void createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages,
                            const std::vector<EvFrameBufferAttachment>& depthAttachments);
     void createTexturesDescriptorSetLayout();
@@ -70,8 +67,6 @@ class ForwardPass : NoCopy
     void createPipelineLayout();
     void createPipeline();
     void createLightBuffers(uint32_t nrImages);
-    void allocateLightDescriptorSets(uint32_t nrImages);
-    void createLightDescriptorSets(uint32_t nrImages);
 
     void createSkyboxDescriptorSetLayout();
     void createSkyboxPipelineLayout();
@@ -87,7 +82,7 @@ public:
     inline Skybox& getSkybox() { return skybox; }
 
     inline void setLightProperties(uint32_t imageIdx, float constant, float linear, float quadratic) {
-        auto& buffer = *lightBuffersMapped[imageIdx];
+        auto& buffer = *lightUBO->getPtr(imageIdx);
         buffer.falloffConstant = constant;
         buffer.falloffLinear = linear;
         buffer.falloffQuadratic = quadratic;

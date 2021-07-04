@@ -1,16 +1,10 @@
-#ifndef H_SHADER_TYPES
-#define H_SHADER_TYPES
+#pragma once
 
-#ifndef IN_SHADER
 #include "core.h"
-using namespace glm;
-#endif
 
 struct PushConstant
 {
-    mat4 camera;
-    mat4 mvp;
-    vec3 camPos;
+    glm::mat4 camera;
+    glm::mat4 mvp;
+    glm::vec3 camPos;
 };
-
-#endif

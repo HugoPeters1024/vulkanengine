@@ -9,8 +9,6 @@ ForwardPass::ForwardPass(EvDevice &device, uint32_t width, uint32_t height, uint
     createPipelineLayout();
     createPipeline();
     createLightBuffers(nrImages);
-    allocateLightDescriptorSets(nrImages);
-    createLightDescriptorSets(nrImages);
 
     createSkyboxDescriptorSetLayout();
     createSkyboxPipelineLayout();
@@ -20,16 +18,13 @@ ForwardPass::ForwardPass(EvDevice &device, uint32_t width, uint32_t height, uint
 ForwardPass::~ForwardPass() {
     framebuffer.destroy(device);
     skybox.destroy(device);
+    lightUBO->destroy();
     vkDestroyShaderModule(device.vkDevice, vertShader, nullptr);
     vkDestroyShaderModule(device.vkDevice, fragShader, nullptr);
     vkDestroyDescriptorSetLayout(device.vkDevice, texturesDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(device.vkDevice, lightBufferDescriptorSetLayout, nullptr);
     vkDestroyPipeline(device.vkDevice, pipeline, nullptr);
     vkDestroyPipelineLayout(device.vkDevice, pipelineLayout, nullptr);
-    for(int i=0; i<lightBuffers.size(); i++) {
-        vmaUnmapMemory(device.vmaAllocator, lightBufferMemories[i]);
-        vmaDestroyBuffer(device.vmaAllocator, lightBuffers[i], lightBufferMemories[i]);
-    }
 }
 
 void ForwardPass::createFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages,
@@ -156,7 +151,7 @@ void ForwardPass::createPipelineLayout() {
     std::array<VkDescriptorSetLayout,2> descriptorSetLayouts {texturesDescriptorSetLayout, lightBufferDescriptorSetLayout};
     VkPipelineLayoutCreateInfo pipelineLayoutInfo {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = static_cast<uint32>(descriptorSetLayouts.size()),
+            .setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size()),
             .pSetLayouts = descriptorSetLayouts.data(),
             .pushConstantRangeCount = 1,
             .pPushConstantRanges = &pushConstantRange,
@@ -210,33 +205,14 @@ void ForwardPass::createPipeline() {
 }
 
 void ForwardPass::createLightBuffers(uint32_t nrImages) {
-    lightBuffers.resize(nrImages);
-    lightBufferMemories.resize(nrImages);
-    lightBuffersMapped.resize(nrImages);
-    VkDeviceSize bufferSize = sizeof(LightBuffer);
+    lightUBO = std::make_unique<UBOBuffer<LightBuffer>>(device, 1, nrImages, 2, lightBufferDescriptorSetLayout);
     for(int i=0; i<nrImages; i++) {
-        device.createHostBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &lightBuffers[i], &lightBufferMemories[i]);
-        vkCheck(vmaMapMemory(device.vmaAllocator, lightBufferMemories[i], (void**)&lightBuffersMapped[i]));
-        auto& buffer = *lightBuffersMapped[i];
+        auto& buffer = *lightUBO->getPtr(i);
         buffer.falloffConstant = 1.0f;
         buffer.falloffLinear = 1.0f;
         buffer.falloffQuadratic = 1.0f;
         buffer.lightCount = 0;
     }
-}
-
-void ForwardPass::allocateLightDescriptorSets(uint32_t nrImages) {
-    lightBufferDescriptorSets.resize(nrImages);
-
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(nrImages, lightBufferDescriptorSetLayout);
-    VkDescriptorSetAllocateInfo allocInfo {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool = device.vkDescriptorPool,
-        .descriptorSetCount = nrImages,
-        .pSetLayouts = descriptorSetLayouts.data(),
-    };
-
-    vkCheck(vkAllocateDescriptorSets(device.vkDevice, &allocInfo, lightBufferDescriptorSets.data()));
 }
 
 void ForwardPass::createSkyboxDescriptorSetLayout() {
@@ -318,22 +294,10 @@ void ForwardPass::createSkyboxPipeline() {
     vkCheck(vkCreateGraphicsPipelines(device.vkDevice, nullptr, 1, &pipelineInfo, nullptr, &skybox.pipeline));
 }
 
-void ForwardPass::createLightDescriptorSets(uint32_t nrImages) {
-    for(int i=0; i<nrImages; i++) {
-        VkDescriptorBufferInfo lightDataDescriptorInfo {
-            .buffer = lightBuffers[i],
-            .offset = 0,
-            .range = VK_WHOLE_SIZE,
-        };
-
-        auto write = vks::initializers::writeDescriptorSet(lightBufferDescriptorSets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &lightDataDescriptorInfo, 1);
-        vkUpdateDescriptorSets(device.vkDevice, 1, &write, 0, nullptr);
-    }
-}
-
 void ForwardPass::updateLights(LightComponent *lightData, uint32_t nrLights, uint32_t imageIdx) {
-    lightBuffersMapped[imageIdx]->lightCount = nrLights;
-    memcpy(lightBuffersMapped[imageIdx]->lightData, lightData, nrLights * sizeof(LightComponent));
+    auto& buffer = *lightUBO->getPtr(imageIdx);
+    buffer.lightCount = nrLights;
+    memcpy(buffer.lightData, lightData, nrLights * sizeof(LightComponent));
 }
 
 void ForwardPass::recreateFramebuffer(uint32_t width, uint32_t height, uint32_t nrImages,
@@ -374,7 +338,7 @@ void ForwardPass::startPass(VkCommandBuffer cmdBuffer, uint32_t imageIdx) const 
     vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
     vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &lightBufferDescriptorSets[imageIdx], 0, nullptr);
+    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, lightUBO->getDescriptorSet(imageIdx), 0, nullptr);
 }
 
 void ForwardPass::endPass(VkCommandBuffer cmdBuffer) const {

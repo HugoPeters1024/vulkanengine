@@ -15,6 +15,12 @@ struct TextureSet : NoCopy {
     std::vector<VkDescriptorSet> descriptorSets;
 };
 
+struct Material
+{
+    // may exceed 1.0 to create emissive materials.
+    alignas(16) glm::vec3 albedoColor;
+};
+
 struct ModelComponent {
     EvMesh* mesh = nullptr;
     TextureSet* textureSet = nullptr;

@@ -10,12 +10,17 @@ layout(location = 2) in mat3 TBN;
 layout(set = 0, binding = 0) uniform sampler2D diffuseTex;
 layout(set = 0, binding = 1) uniform sampler2D normalTex;
 
+
 layout(set = 1, binding = 2) uniform LightBuffer {
     LightData lightData[2000];
     uint lightCount;
     float falloffConstant;
     float falloffLinear;
     float falloffQuadratic;
+};
+
+layout(set = 1, binding = 3) uniform MaterialBuffer {
+    Material materials[1];
 };
 
 layout (push_constant) uniform Lol {
