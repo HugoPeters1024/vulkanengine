@@ -40,7 +40,7 @@ void main() {
 
     vec3 totalLight = vec3(0);
 
-    for(uint lightIdx = 0; lightIdx < lightCount; lightIdx++) {
+    for(uint lightIdx = 0; lightIdx < 50; lightIdx++) {
         const vec3 lightPos = lightData[lightIdx].lightPos.xyz;
         const vec3 lightColor = lightData[lightIdx].lightColor.xyz;
         const vec3 toLight = normalize(lightPos - fragPos);

@@ -56,14 +56,19 @@ link_directories(${CMAKE_SOURCE_DIR}/external/glfw)
 target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/external/glfw/include)
 target_link_libraries(vulkanray glfw)
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/glm)
+link_directories(${CMAKE_SOURCE_DIR}/external/glm)
+target_include_directories(vulkanray PUBLIC ${CMAKE_SOURCE_DIR}/external/glm/glm)
+target_link_libraries(vulkanray glm)
+
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/external/imgui)
 link_directories(${CMAKE_SOURCE_DIR}/external/imgui)
 target_include_directories(vulkanray PRIVATE ${CMAKE_SOURCE_DIR}/external/imgui)
 target_link_libraries(vulkanray imgui)
 
-find_package(glm REQUIRED)
-message(STATUS "GLM included at ${GLM_INCLUDE_DIR}")
+#find_package(glm REQUIRED)
+#message(STATUS "GLM included at ${GLM_INCLUDE_DIR}")
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(vulkanray Vulkan::Vulkan)

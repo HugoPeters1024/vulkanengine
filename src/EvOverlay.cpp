@@ -82,6 +82,8 @@ void EvOverlay::NewFrame() {
         ImGui::TextUnformatted("");
         ImGui::SliderFloat("linear", &uiInfo.linear, 0.1f, 10.0f);
         ImGui::SliderFloat("quadratic", &uiInfo.quadratic, 0.1f, 10.0f);
+        ImGui::TextUnformatted("");
+        ImGui::Checkbox("bloom", &uiInfo.bloomEnabled);
     }
     ImGui::End();
 

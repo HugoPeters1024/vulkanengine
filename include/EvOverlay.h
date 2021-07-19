@@ -12,6 +12,8 @@ struct UIInfo {
 
     float linear = 1.0f;
     float quadratic = 1.0f;
+
+    bool bloomEnabled = true;
 };
 
 class EvOverlay {

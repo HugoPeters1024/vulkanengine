@@ -159,7 +159,8 @@ void RenderSystem::recordCommandBuffer(uint32_t imageIndex, const EvCamera &came
         forwardPass->endPass(commandBuffer);
     }
     {
-        bloomPass->run(commandBuffer, imageIndex);
+        if (getUIInfo().bloomEnabled)
+            bloomPass->run(commandBuffer, imageIndex);
     }
     {
         postPass->beginPass(commandBuffer, imageIndex);
